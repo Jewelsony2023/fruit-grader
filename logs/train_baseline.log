@@ -1,0 +1,11 @@
+Device: cpu | train 1110 | val 229 | grade counts [280.0, 226.0, 325.0, 279.0]
+Saving to /home/claude/fruit-grader/runs/baseline_efficientnet_b0
+epoch 1 | train_cls 1.3420 | train_total 1.3420 | val_acc 0.5284 | val_f1 0.4343 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.4343 | sec 91.6000 | frozen False
+epoch 2 | train_cls 1.0255 | train_total 1.0255 | val_acc 0.6638 | val_f1 0.6398 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.6398 | sec 95.4000 | frozen False
+epoch 3 | train_cls 0.8231 | train_total 0.8231 | val_acc 0.7642 | val_f1 0.7657 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.7657 | sec 95.1000 | frozen False
+epoch 4 | train_cls 0.6783 | train_total 0.6783 | val_acc 0.8821 | val_f1 0.8787 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.8787 | sec 94.0000 | frozen False
+epoch 5 | train_cls 0.5674 | train_total 0.5674 | val_acc 0.8210 | val_f1 0.8151 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.8151 | sec 97.4000 | frozen False
+epoch 6 | train_cls 0.5909 | train_total 0.5909 | val_acc 0.8821 | val_f1 0.8799 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.8799 | sec 94.6000 | frozen False
+epoch 7 | train_cls 0.5330 | train_total 0.5330 | val_acc 0.9170 | val_f1 0.9158 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.9158 | sec 93.7000 | frozen False
+epoch 8 | train_cls 0.4955 | train_total 0.4955 | val_acc 0.8996 | val_f1 0.8976 | val_defect_iou  | val_defect_dice  | val_sev_mae  | score 0.8976 | sec 92.2000 | frozen False
+Done. Best checkpoint: /home/claude/fruit-grader/runs/baseline_efficientnet_b0/best.pt

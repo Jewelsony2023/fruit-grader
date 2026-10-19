@@ -75,3 +75,13 @@ def test_seg_metrics():
     r = m.result(CFG["seg_classes"])
     assert abs(r["iou"]["bruise"] - 0.5) < 1e-6
     assert abs(r["dice"]["bruise"] - 2 / 3) < 1e-6
+
+
+import pytest
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA GPU")
+def test_gradcam_on_gpu():
+    mt = MultiTaskFruitNet("mobilenetv3_large_100", pretrained=False).cuda().eval()
+    cam, _ = GradCAM(mt)(torch.randn(1, 3, 128, 128, device="cuda"))
+    assert cam.shape == (128, 128)

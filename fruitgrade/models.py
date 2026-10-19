@@ -36,7 +36,8 @@ def find_cam_layer(encoder):
         if name and name.count(".") <= 1:
             hooks.append(m.register_forward_hook(
                 lambda mod, i, o, n=name: calls.append((n, mod, o.shape if torch.is_tensor(o) else None))))
-    feats = encoder(torch.zeros(1, 3, 128, 128))
+    device = next(encoder.parameters()).device
+    feats = encoder(torch.zeros(1, 3, 128, 128, device=device))
     for h in hooks:
         h.remove()
     encoder.train(was_training)

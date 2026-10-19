@@ -1,0 +1,11 @@
+Device: cpu | train 1110 | val 229 | grade counts [280.0, 226.0, 325.0, 279.0]
+Saving to /home/claude/fruit-grader/runs/multitask_efficientnet_b0
+epoch 1 | train_cls 1.3401 | train_seg 1.7465 | train_sev 0.1597 | train_total 3.4061 | val_acc 0.5546 | val_f1 0.4597 | val_defect_iou 0.3167 | val_defect_dice 0.4294 | val_sev_mae 9.0215 | score 0.6863 | sec 187.1000 | frozen False
+epoch 2 | train_cls 1.0029 | train_seg 1.3127 | train_sev 0.0790 | train_total 2.4736 | val_acc 0.7205 | val_f1 0.6931 | val_defect_iou 0.5033 | val_defect_dice 0.6669 | val_sev_mae 5.1670 | score 1.1447 | sec 164.5000 | frozen False
+epoch 3 | train_cls 0.6964 | train_seg 1.0856 | train_sev 0.0473 | train_total 1.8767 | val_acc 0.7817 | val_f1 0.7756 | val_defect_iou 0.6283 | val_defect_dice 0.7688 | val_sev_mae 3.9031 | score 1.3649 | sec 170.4000 | frozen False
+epoch 4 | train_cls 0.6397 | train_seg 0.9007 | train_sev 0.0397 | train_total 1.6197 | val_acc 0.8821 | val_f1 0.8773 | val_defect_iou 0.6447 | val_defect_dice 0.7804 | val_sev_mae 3.8789 | score 1.4832 | sec 164.2000 | frozen False
+epoch 5 | train_cls 0.6110 | train_seg 0.8000 | train_sev 0.0392 | train_total 1.4895 | val_acc 0.8646 | val_f1 0.8620 | val_defect_iou 0.6381 | val_defect_dice 0.7774 | val_sev_mae 3.1169 | score 1.4690 | sec 164.2000 | frozen False
+epoch 6 | train_cls 0.5303 | train_seg 0.7320 | train_sev 0.0319 | train_total 1.3261 | val_acc 0.8734 | val_f1 0.8728 | val_defect_iou 0.6897 | val_defect_dice 0.8147 | val_sev_mae 3.0255 | score 1.5323 | sec 157.2000 | frozen False
+epoch 7 | train_cls 0.5480 | train_seg 0.6843 | train_sev 0.0324 | train_total 1.2971 | val_acc 0.9214 | val_f1 0.9204 | val_defect_iou 0.6847 | val_defect_dice 0.8106 | val_sev_mae 3.2382 | score 1.5726 | sec 162.7000 | frozen False
+epoch 8 | train_cls 0.5129 | train_seg 0.6680 | train_sev 0.0318 | train_total 1.2444 | val_acc 0.8996 | val_f1 0.9009 | val_defect_iou 0.6908 | val_defect_dice 0.8152 | val_sev_mae 3.0522 | score 1.5611 | sec 164.0000 | frozen False
+Done. Best checkpoint: /home/claude/fruit-grader/runs/multitask_efficientnet_b0/best.pt

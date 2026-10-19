@@ -2,7 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 data/
-runs/
-reports/
-logs/
+# model weights stay on disk only (too big for git); run metadata IS committed
 *.pt
+reports/
