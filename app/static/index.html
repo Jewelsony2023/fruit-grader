@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fruit Quality Grader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">●</div>
+    <div>
+      <h1>Fruit Quality Grader</h1>
+      <p>Grade · Defect segmentation · Severity · Explainability</p>
+    </div>
+  </div>
+  <nav>
+    <button class="tab active" data-view="analyse">Analyse</button>
+    <button class="tab" data-view="performance">Model performance</button>
+    <button class="tab" data-view="how">How it works</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ ANALYSE ============ -->
+  <section id="view-analyse" class="view active">
+    <div class="layout">
+      <aside class="panel input-panel">
+        <h2>1 · Upload a fruit image</h2>
+        <label id="drop" class="drop">
+          <input id="file" type="file" accept="image/*" hidden>
+          <img id="preview" alt="" hidden>
+          <div id="drop-hint">
+            <div class="drop-icon">⬆</div>
+            <b>Drop an image here</b><span>or click to choose (JPG / PNG)</span>
+          </div>
+        </label>
+
+        <h2>2 · Choose model</h2>
+        <div class="seg-toggle" id="model-toggle">
+          <button data-model="multitask" class="on">Multi-task (proposed)</button>
+          <button data-model="baseline">Baseline (classifier only)</button>
+        </div>
+        <button id="run" class="primary" disabled>Grade this fruit</button>
+        <p id="status" class="muted small"></p>
+
+        <h2 class="mt">Or try a test image</h2>
+        <div id="samples" class="samples"></div>
+      </aside>
+
+      <section class="panel results" id="results">
+        <div class="empty" id="empty">
+          <p class="big">Results appear here</p>
+          <p class="muted">Upload an image or click a test image on the left.</p>
+        </div>
+
+        <div id="out" hidden>
+          <div class="summary">
+            <div class="grade-card" id="grade-card">
+              <span class="label">Predicted grade</span>
+              <span class="grade" id="grade">–</span>
+              <span class="conf" id="conf"></span>
+            </div>
+            <div class="sev-card">
+              <span class="label">Defect severity</span>
+              <div class="gauge"><div class="gauge-fill" id="sev-fill"></div></div>
+              <div class="sev-num"><b id="sev-area">–</b><span>% of fruit surface damaged</span></div>
+              <div class="muted small" id="sev-head"></div>
+            </div>
+          </div>
+
+          <div id="review" class="review" hidden></div>
+          <div id="note" class="note" hidden></div>
+
+          <div class="imgs">
+            <figure><img id="im-input"><figcaption>Input</figcaption></figure>
+            <figure><img id="im-overlay"><figcaption>Defects on fruit</figcaption></figure>
+            <figure><img id="im-mask"><figcaption>Segmentation mask</figcaption></figure>
+            <figure><img id="im-cam"><figcaption>Grad-CAM — where the model looked</figcaption></figure>
+          </div>
+
+          <div class="two">
+            <div>
+              <h3>Defect breakdown</h3>
+              <div id="breakdown"></div>
+              <div id="legend" class="legend"></div>
+            </div>
+            <div>
+              <h3>Grade probabilities <span class="muted small">(MC Dropout mean)</span></h3>
+              <div id="probs"></div>
+              <div class="uncert" id="uncert"></div>
+            </div>
+          </div>
+          <div class="actions"><button id="download" class="ghost">Download result (JSON)</button></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============ PERFORMANCE ============ -->
+  <section id="view-performance" class="view">
+    <div class="panel">
+      <h2>Multi-task model vs classification-only baseline</h2>
+      <p class="muted">From <code>reports/comparison.md</code> — run <code>python -m fruitgrade.evaluate</code> to refresh.</p>
+      <div id="perf"></div>
+    </div>
+  </section>
+
+  <!-- ============ HOW ============ -->
+  <section id="view-how" class="view">
+    <div class="panel how">
+      <h2>How a prediction is made</h2>
+      <ol>
+        <li><b>Shared backbone.</b> A pretrained CNN (EfficientNet-B0 / ResNet-50 / MobileNetV3) turns the image into feature maps.</li>
+        <li><b>Three heads, trained together.</b> Grade classifier (A / B / C / Reject), U-Net decoder for a pixel mask (healthy, bruise, rot, mechanical damage), and a severity regressor (0–100).</li>
+        <li><b>Severity.</b> Damaged pixels ÷ fruit pixels × 100, from the mask, so the number can be checked by eye. The regression head gives a second estimate.</li>
+        <li><b>Grad-CAM.</b> Shows which pixels pushed the model to its grade. If it lights up the background, don't trust the result.</li>
+        <li><b>MC Dropout.</b> The grade head runs 20 times with dropout on. Big disagreement or low confidence flags the fruit for <b>manual review</b>.</li>
+        <li><b>Consistency check.</b> The grade the classifier picks is compared to the grade the defect area implies (rules below). A mismatch is also flagged.</li>
+      </ol>
+      <h3>Grading rules (config.yaml)</h3>
+      <div id="rules"></div>
+    </div>
+  </section>
+</main>
+
+<div id="lightbox" hidden><img id="lightbox-img"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

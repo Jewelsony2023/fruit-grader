@@ -1,0 +1,51 @@
+# =============================================================
+#  Fruit Quality Grading & Surface Defect Quantification — config
+#  Every script reads this file. Change values here, not in code.
+# =============================================================
+
+data:
+  root: data/processed          # output of prepare scripts: images/, masks/, labels.csv
+  image_size: 256               # images are resized to this square size
+  num_workers: 2                # set 0 on Windows if DataLoader hangs
+
+# Segmentation classes (pixel values inside mask PNGs)
+seg_classes: [background, healthy, bruise, rot, mechanical]
+
+# Grade classes (order = label index)
+grades: [A, B, C, Reject]
+
+# Grading rules: how a mask's defect percentages become a grade.
+# Used to (1) create grade labels for datasets that only have fresh/rotten,
+# and (2) cross-check the classifier at inference time.
+# Rule order: Reject -> C -> B -> A (first rule that matches wins).
+grading_rules:
+  reject: {total_pct: 30.0, rot_pct: 10.0}   # total >= 30% OR rot >= 10%  -> Reject
+  c:      {total_pct: 10.0, rot_pct: 2.0}    # total >= 10% OR rot >= 2%   -> C
+  b:      {total_pct: 2.0}                   # total >= 2%                 -> B
+                                             # otherwise                   -> A
+
+model:
+  backbone: efficientnet_b0     # resnet50 | efficientnet_b0 | mobilenetv3_large_100 (any timm name)
+  pretrained: true              # ImageNet transfer learning (needs internet the first time)
+  dropout: 0.3                  # also used by MC Dropout at inference
+  decoder_channels: [256, 128, 64, 32]
+
+train:
+  epochs: 30
+  batch_size: 16
+  lr: 0.0003
+  backbone_lr_mult: 0.1         # backbone learns 10x slower (protects pretrained features)
+  weight_decay: 0.0001
+  freeze_backbone_epochs: 2     # train only heads first, then fine-tune everything
+  # Multi-task loss weights:  L = w_cls*CE + w_seg*(CE+Dice) + w_sev*SmoothL1
+  w_cls: 1.0
+  w_seg: 1.0
+  w_sev: 2.0
+  early_stop_patience: 7
+  seed: 42
+  out_dir: runs
+
+inference:
+  mc_dropout_passes: 20         # forward passes for MC Dropout uncertainty
+  review_confidence: 0.60       # below this mean confidence -> "needs manual review"
+  review_std: 0.15              # above this std of the top class -> "needs manual review"
