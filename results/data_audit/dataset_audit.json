@@ -276,5 +276,24 @@
     "contact_sheet_1.png",
     "contact_sheet_2.png",
     "contact_sheet_3.png"
-  ]
+  ],
+  "pseudo_mask_tuning_sample": {
+    "what": "40 random images per class (seed 1) used to tune pseudo_masks.py (fresh/rotten agreement)",
+    "images": 240,
+    "by_split": {
+      "train": 167,
+      "test": 40,
+      "val": 33
+    },
+    "note": "drawn from all splits: val/test images influenced pseudo-mask tuning; not fixed, reported"
+  },
+  "pseudo_mask_contact_sheet_sample": {
+    "what": "24 random images per class (seed 0) shown on the before/after review sheets",
+    "images": 144,
+    "by_split": {
+      "train": 99,
+      "val": 23,
+      "test": 22
+    }
+  }
 }
