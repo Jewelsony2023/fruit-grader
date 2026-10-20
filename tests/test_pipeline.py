@@ -1,4 +1,6 @@
 """Fast checks that every piece fits together. Run:  pytest -q"""
+from collections import Counter
+
 import numpy as np
 import torch
 
@@ -85,3 +87,24 @@ def test_gradcam_on_gpu():
     mt = MultiTaskFruitNet("mobilenetv3_large_100", pretrained=False).cuda().eval()
     cam, _ = GradCAM(mt)(torch.randn(1, 3, 128, 128, device="cuda"))
     assert cam.shape == (128, 128)
+
+
+def test_invariant_phash_and_pairs():
+    from pathlib import Path
+    from PIL import Image
+    from fruitgrade.data.dedupe import invariant_phash, near_pairs, original_key, split_groups
+    rng = np.random.default_rng(3)
+    a = Image.fromarray(make_sample(128, 2, rng, RULES)[0])
+    ha = invariant_phash(a)
+    assert ha == invariant_phash(a.transpose(Image.Transpose.ROTATE_90))
+    assert ha == invariant_phash(a.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+    # pairs are listed, never chained: 0~1 and 1~2 do not imply 0~2
+    assert near_pairs([0b0, 0b111, 0b111111], max_dist=3) == [(0, 1, 3), (1, 2, 3)]
+    assert original_key(Path("train/freshapples/rotated_by_15_X 1.png")) == ("freshapples/X 1.png", "rotated_by_15_")
+    assert original_key(Path("test/rottenbanana/X.png")) == ("rottenbanana/X.png", "")
+    # stratified group split: groups stay whole, ~15% test / ~15% val per class
+    cls = {g: "a" if g < 100 else "b" for g in range(200)}
+    s = split_groups(cls, {g: 1 for g in cls}, {"val": 0.15, "test": 0.15}, seed=42)
+    for c in "ab":
+        got = Counter(v for g, v in s.items() if cls[g] == c)
+        assert got == {"train": 70, "val": 15, "test": 15}
