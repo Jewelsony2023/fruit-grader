@@ -242,7 +242,10 @@ def main():
                            for s in ("train", "val", "test")},
         "contact_sheets": sheets,
     }
-    (out / "dataset_audit.json").write_text(json.dumps(audit, indent=2))
+    audit_path = out / "dataset_audit.json"
+    if audit_path.exists():                               # keep entries other tools added (e.g. pm_eval)
+        audit = {**json.loads(audit_path.read_text()), **audit}
+    audit_path.write_text(json.dumps(audit, indent=2))
     print(json.dumps({k: v for k, v in audit.items() if k != "merged_pairs"}, indent=2))
     print("merged pairs:", len(merged), "| label conflicts:", len(conflicts),
           "| images dropped:", len(drop))
