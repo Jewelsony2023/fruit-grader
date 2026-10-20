@@ -61,9 +61,12 @@ VIT capstone: one multi-task model for fruit grading (grade A/B/C/Reject, defect
 ### Evaluation
 - `evaluate.py` reports 95% bootstrap CIs (1,000 resamples, by image) as "value [low, high]" for accuracy, macro-F1, defect IoU/Dice and severity MAE.
 
-### Before Phase 4
-- Add AMP (autocast + GradScaler) and a `--grad-accum` option to `train.py`, with tests.
-- Write `notebooks/train_kaggle.ipynb`.
+### Next steps (PARKED on 2026-10-20 for the review; resume after it)
+- Check that the CVAT UI works: run CVAT in Docker and do upload -> export -> coco_to_masks on 3 images. Then hand out batches (docs/CVAT_GUIDE.md) and convert the returned batches.
+- Decide whether `results/cvat/manifest.csv` (it reveals each t###.jpg's class) should stay tracked if the GitHub repo is public.
+- Anchoring / CVAT verified evaluation becomes the headline (Phase 5).
+- Before the real Phase 4: add AMP (autocast + GradScaler) and a `--grad-accum` option to `train.py`, with tests, and write `notebooks/train_kaggle.ipynb`.
+- The overnight laptop run of 2026-10-20 (`scripts/overnight.ps1`, user-approved exception to "don't train on the laptop") is PRELIMINARY: test ground truth = pseudo-masks. Its numbers go only in `results/preliminary/` and `results/review/`, always labelled as such.
 
 ## Grading rules: LOCKED
 - Grading rules locked at commit 0e11134, 2026-10-19 (lock recorded 2026-10-20), before any real test evaluation.
