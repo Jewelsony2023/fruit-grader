@@ -34,6 +34,9 @@ VIT capstone: one multi-task model for fruit grading (grade A/B/C/Reject, defect
 - Group by original photo: strip the augmentation prefix from the file name. All 9 versions form one group, and only the original is kept.
 - pHash (minimum over the 8 rotated/flipped versions) on the 1,511 originals only. List cross-original pairs at Hamming distance <= 6 as pairs, never chained.
 - Make a contact sheet of those pairs. Merge **only** pairs that are visibly the same fruit or photo, recorded in `data/interim/merge_decisions.csv`. Never merge on the threshold alone.
+- **When unsure, merge.** A wrong merge costs nothing; a missed one risks leakage.
+- A cross-class pair that shows the same photo or fruit is a label conflict: mark it `conflict`, which drops both images and logs them as `label_conflict` in the audit. (None found: all 12 cross-class pairs were re-checked enlarged.)
+- Tracked copies of the decisions, audit and splits live in `results/data_audit/`.
 - Split 70/15/15 by group, stratified by class (fresh/rotten x fruit), seed 42. No group spans two splits.
 - (The first attempt, pHash with union-find over all 13,599 files, chained unrelated rotated images into a 1,053-image group. Don't use it.)
 
