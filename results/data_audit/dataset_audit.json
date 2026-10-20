@@ -295,5 +295,47 @@
       "val": 23,
       "test": 22
     }
+  },
+  "label_consistency_filter": {
+    "rule": "train/val only: fresh label + pseudo Reject, or rotten label + pseudo A -> excluded",
+    "excluded": 71,
+    "by_reason_split": {
+      "fresh_label_but_reject/train": 46,
+      "fresh_label_but_reject/val": 3,
+      "rotten_label_but_A/train": 16,
+      "rotten_label_but_A/val": 6
+    },
+    "by_class_split": {
+      "fresh_apple/train": 29,
+      "fresh_apple/val": 2,
+      "fresh_banana/train": 15,
+      "fresh_banana/val": 1,
+      "fresh_orange/train": 2,
+      "rotten_apple/train": 3,
+      "rotten_banana/train": 2,
+      "rotten_banana/val": 1,
+      "rotten_orange/train": 11,
+      "rotten_orange/val": 5
+    },
+    "remaining_split_grade": {
+      "train": {
+        "A": 265,
+        "B": 46,
+        "C": 158,
+        "Reject": 526
+      },
+      "val": {
+        "A": 56,
+        "B": 19,
+        "C": 39,
+        "Reject": 104
+      },
+      "test": {
+        "A": 64,
+        "B": 13,
+        "C": 33,
+        "Reject": 117
+      }
+    }
   }
 }
