@@ -52,6 +52,12 @@ VIT capstone: one multi-task model for fruit grading (grade A/B/C/Reject, defect
 - Train and val only; test is never touched. Fresh label + pseudo grade Reject, or rotten label + pseudo grade A, gets `excluded_reason` in labels.csv (flagged, not deleted). `FruitDataset` skips flagged rows.
 - At approval: 71 rows excluded (62 train, 9 val). Counts are in the audit under `label_consistency_filter`.
 
+### CVAT verified test set (Phase 3)
+- `python -m fruitgrade.data.export_for_cvat` -> `data/cvat/`: all 227 test originals as `t###.jpg` (neutral names), COCO 1.0 polygon pre-annotations from the pseudo-masks (eps 1.5 px), 3 class-stratified batches (76/76/75). Tracked manifest: `results/cvat/manifest.csv`.
+- Labels: fruit, bruise, rot, cut, healthy (healthy = island of healthy skin inside a defect, drawn last). Map for `coco_to_masks`: `fruit=healthy,bruise=bruise,rot=rot,cut=mechanical,healthy=healthy_patch`, always with `--manifest` so group/src are kept.
+- Round trip (export -> coco_to_masks) on all 227: fruit IoU 0.993, max severity change 0.61 pts. The CVAT UI import/export itself is not yet tested.
+- Annotator instructions: `docs/CVAT_GUIDE.md`. Annotate the main fruit only.
+
 ### Evaluation
 - `evaluate.py` reports 95% bootstrap CIs (1,000 resamples, by image) as "value [low, high]" for accuracy, macro-F1, defect IoU/Dice and severity MAE.
 
