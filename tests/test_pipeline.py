@@ -108,3 +108,33 @@ def test_invariant_phash_and_pairs():
     for c in "ab":
         got = Counter(v for g, v in s.items() if cls[g] == c)
         assert got == {"train": 70, "val": 15, "test": 15}
+
+
+def test_bootstrap_ci():
+    from fruitgrade.evaluate import comparison_table, headline_metrics
+    from fruitgrade.metrics import ClsMeter, MAEMeter, bootstrap_ci
+    rng = np.random.default_rng(0)
+    cls, seg, mm, mh = ClsMeter(4), SegMeter(5), MAEMeter(), MAEMeter()
+    for _ in range(60):                                   # one update() per image, like evaluate.py
+        y = int(rng.integers(0, 4))
+        cls.update([y], [y if rng.random() < 0.7 else (y + 1) % 4])
+        gt = rng.integers(0, 5, (8, 8))
+        seg.update(gt, np.where(rng.random((8, 8)) < 0.8, gt, rng.integers(0, 5, (8, 8))))
+        mm.update([rng.uniform(0, 50)], [rng.uniform(0, 50)])
+        mh.update([10.0], [12.0])
+    def stat(idx):
+        return headline_metrics("multitask", CFG, cls, seg, mm, mh, idx)
+    full = stat(None)
+    assert stat(np.arange(60)) == full                    # resampling every image once = point estimate
+    ci = bootstrap_ci(60, stat, n_boot=300, seed=0)
+    for k, v in full.items():
+        lo, hi = ci[k]
+        assert lo <= v <= hi, k
+    assert ci["severity_mae_regression_head"] == [2.0, 2.0]   # constant error -> zero-width interval
+    assert ci["accuracy"][1] - ci["accuracy"][0] > 0.05       # 60 noisy images -> visibly wide
+    r = {"kind": "multitask", "classification": cls.result(CFG["grades"]),
+         "segmentation": seg.result(CFG["seg_classes"]), "severity_mae_from_mask": full["severity_mae_from_mask"],
+         "severity_mae_regression_head": 2.0, "review_flag_rate": 0.1, "errors_caught_by_flag": None, "ci95": ci}
+    table = comparison_table([r])
+    lo, hi = ci["accuracy"]
+    assert f"[{lo * 100:.1f}, {hi * 100:.1f}]" in table and "2.00 [2.00, 2.00]" in table

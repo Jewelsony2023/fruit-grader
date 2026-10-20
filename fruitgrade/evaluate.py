@@ -13,6 +13,10 @@ Outputs (reports/ by default):
     confusion_<model>.png   confusion matrices
     samples.png             qualitative grid: input | GT mask | predicted mask | Grad-CAM
 
+Headline metrics get a 95% bootstrap confidence interval: the test images are
+resampled with replacement (--bootstrap times, default 1000), the metric is
+recomputed each time, and the interval is the 2.5th-97.5th percentile.
+
 How the baseline gets IoU / MAE at all:
     it has no mask, so we use the usual weakly-supervised trick — threshold its
     Grad-CAM for "Reject" (>0.5) inside the fruit as the "defect mask". That is
@@ -31,7 +35,7 @@ from fruitgrade.data.dataset import FruitDataset
 from fruitgrade.explain import GradCAM, mc_dropout
 from fruitgrade.grading import colourise_mask, grade_from_severity, severity_from_mask
 from fruitgrade.inference import heatmap_overlay
-from fruitgrade.metrics import ClsMeter, MAEMeter, SegMeter
+from fruitgrade.metrics import ClsMeter, MAEMeter, SegMeter, bootstrap_ci
 from fruitgrade.models import load_checkpoint
 from fruitgrade.train import get_device
 
@@ -43,7 +47,7 @@ def to_rgb(t):
     return (np.clip(t.permute(1, 2, 0).numpy() * STD + MEAN, 0, 1) * 255).astype(np.uint8)
 
 
-def evaluate_model(ckpt, cfg, ds, device, n_samples=6, mc_passes=10):
+def evaluate_model(ckpt, cfg, ds, device, n_samples=6, mc_passes=10, n_boot=1000, boot_seed=0):
     model, ck = load_checkpoint(ckpt, device)
     kind, grades = ck["kind"], cfg["grades"]
     cam = GradCAM(model)
@@ -99,8 +103,24 @@ def evaluate_model(ckpt, cfg, ds, device, n_samples=6, mc_passes=10):
     if kind == "multitask":
         out["severity_mae_regression_head"] = mae_head.result()
         out["classifier_vs_mask_rule_agreement"] = rule_agree / len(ds)
+    if n_boot:
+        out["ci95"] = bootstrap_ci(len(ds), lambda idx: headline_metrics(kind, cfg, cls, seg, mae_mask, mae_head, idx),
+                                   n_boot, boot_seed)
+        out["bootstrap"] = {"resamples": n_boot, "seed": boot_seed, "unit": "image"}
     cam.remove()
     return out, samples
+
+
+def headline_metrics(kind, cfg, cls, seg, mae_mask, mae_head, idx=None):
+    """The metrics that get a CI, recomputed on the images idx (None = all images)."""
+    c, s = cls.result(cfg["grades"], idx), seg.result(cfg["seg_classes"], idx)
+    d = {"accuracy": c["accuracy"], "macro_f1": c["macro_f1"],
+         "mean_defect_iou": s["mean_defect_iou"], "mean_defect_dice": s["mean_defect_dice"],
+         "any_defect_iou": s["any_defect_iou"], "any_defect_dice": s["any_defect_dice"],
+         "severity_mae_from_mask": mae_mask.result(idx)}
+    if kind == "multitask":
+        d["severity_mae_regression_head"] = mae_head.result(idx)
+    return d
 
 
 def plot_confusion(cm, names, title, path):
@@ -145,24 +165,36 @@ def comparison_table(results):
         if v is None:
             return "—"
         return f"{v * 100:.1f}%" if pct else f"{v:.3f}"
+
+    def ci(r, key, v, pct=False, digits=3):
+        """'value [low, high]'; the interval is added when r has a bootstrap CI for key."""
+        if v is None:
+            return "—"
+        txt = f(v, True) if pct else f"{v:.{digits}f}"
+        if key in r.get("ci95", {}):
+            lo, hi = r["ci95"][key]
+            txt += f" [{lo * 100:.1f}, {hi * 100:.1f}]" if pct else f" [{lo:.{digits}f}, {hi:.{digits}f}]"
+        return txt
+
     lines = ["| Metric | " + " | ".join(r["kind"] for r in results) + " |",
              "|---|" + "---|" * len(results)]
     rows = [
-        ("Grade accuracy", lambda r: f(r["classification"]["accuracy"], True)),
-        ("Grade macro-F1", lambda r: f(r["classification"]["macro_f1"])),
-        ("Mean defect IoU", lambda r: f(r["segmentation"]["mean_defect_iou"])),
-        ("Mean defect Dice", lambda r: f(r["segmentation"]["mean_defect_dice"])),
-        ("Any-defect IoU", lambda r: f(r["segmentation"]["any_defect_iou"])),
-        ("Any-defect Dice", lambda r: f(r["segmentation"]["any_defect_dice"])),
-        ("Severity MAE (mask, % pts)", lambda r: f"{r['severity_mae_from_mask']:.2f}"),
+        ("Grade accuracy", lambda r: ci(r, "accuracy", r["classification"]["accuracy"], pct=True)),
+        ("Grade macro-F1", lambda r: ci(r, "macro_f1", r["classification"]["macro_f1"])),
+        ("Mean defect IoU", lambda r: ci(r, "mean_defect_iou", r["segmentation"]["mean_defect_iou"])),
+        ("Mean defect Dice", lambda r: ci(r, "mean_defect_dice", r["segmentation"]["mean_defect_dice"])),
+        ("Any-defect IoU", lambda r: ci(r, "any_defect_iou", r["segmentation"]["any_defect_iou"])),
+        ("Any-defect Dice", lambda r: ci(r, "any_defect_dice", r["segmentation"]["any_defect_dice"])),
+        ("Severity MAE (mask, % pts)", lambda r: ci(r, "severity_mae_from_mask", r["severity_mae_from_mask"], digits=2)),
         ("Severity MAE (regression head, % pts)",
-         lambda r: f"{r['severity_mae_regression_head']:.2f}" if "severity_mae_regression_head" in r else "—"),
+         lambda r: ci(r, "severity_mae_regression_head", r.get("severity_mae_regression_head"), digits=2)),
         ("Flagged for manual review", lambda r: f(r["review_flag_rate"], True)),
         ("Wrong grades caught by flag", lambda r: f(r["errors_caught_by_flag"], True)),
     ]
     for name, fn in rows:
         lines.append(f"| {name} | " + " | ".join(fn(r) for r in results) + " |")
-    note = ("\nBaseline IoU/Dice/MAE use its Grad-CAM (\"Reject\" class, >0.5) inside the fruit as a proxy "
+    note = ("\nValues in brackets are 95% bootstrap confidence intervals (images resampled with replacement)."
+            "\nBaseline IoU/Dice/MAE use its Grad-CAM (\"Reject\" class, >0.5) inside the fruit as a proxy "
             "defect mask, and only as a single 'defect' class (counted as rot) — so per-type IoU is not "
             "meaningful for it.")
     return "\n".join(lines) + "\n" + note
@@ -177,6 +209,8 @@ def main():
     ap.add_argument("--out", default="reports")
     ap.add_argument("--config", default=None)
     ap.add_argument("--mc-passes", type=int, default=10)
+    ap.add_argument("--bootstrap", type=int, default=1000, help="resamples for 95%% CIs (0 = off)")
+    ap.add_argument("--boot-seed", type=int, default=0)
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -192,7 +226,8 @@ def main():
     for ckpt in (args.multitask, args.baseline):
         if not ckpt:
             continue
-        r, samples = evaluate_model(ckpt, cfg, ds, device, mc_passes=args.mc_passes)
+        r, samples = evaluate_model(ckpt, cfg, ds, device, mc_passes=args.mc_passes,
+                                    n_boot=args.bootstrap, boot_seed=args.boot_seed)
         results.append(r)
         plot_confusion(r["classification"]["confusion_matrix"], cfg["grades"],
                        f"{r['kind']} — acc {r['classification']['accuracy']:.1%}",

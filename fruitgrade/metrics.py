@@ -8,20 +8,29 @@ Metrics (accumulated over a whole split, not averaged per batch):
 
 IoU  = TP / (TP + FP + FN)
 Dice = 2TP / (2TP + FP + FN)
+
+Each meter also keeps one record per update() call, so result(idx=...) can
+recompute the metric on a resample of those calls. evaluate.py calls update()
+once per image, which gives bootstrap confidence intervals "by image".
 """
 import numpy as np
 
 
 class ClsMeter:
     def __init__(self, n):
+        self.n = n
         self.cm = np.zeros((n, n), np.int64)
+        self.records = []
 
     def update(self, y_true, y_pred):
+        cm = np.zeros((self.n, self.n), np.int64)
         for t, p in zip(np.asarray(y_true), np.asarray(y_pred)):
-            self.cm[t, p] += 1
+            cm[t, p] += 1
+        self.cm += cm
+        self.records.append(cm)
 
-    def result(self, names):
-        cm = self.cm
+    def result(self, names, idx=None):
+        cm = self.cm if idx is None else np.stack(self.records)[idx].sum(0)
         tp = np.diag(cm).astype(float)
         recall = tp / np.maximum(cm.sum(1), 1)
         prec = tp / np.maximum(cm.sum(0), 1)
@@ -43,23 +52,34 @@ class SegMeter:
         self.fp = np.zeros(n_classes)
         self.fn = np.zeros(n_classes)
         self.bin = np.zeros(3)  # tp, fp, fn for any-defect
+        self.records = []       # per update: (tp, fp, fn per class, bin)
 
     def update(self, gt, pred):
         gt, pred = np.asarray(gt), np.asarray(pred)
+        rec = np.zeros((3, self.n))
         for c in range(self.n):
             g, p = gt == c, pred == c
-            self.tp[c] += np.logical_and(g, p).sum()
-            self.fp[c] += np.logical_and(~g, p).sum()
-            self.fn[c] += np.logical_and(g, ~p).sum()
+            rec[:, c] = [np.logical_and(g, p).sum(), np.logical_and(~g, p).sum(),
+                         np.logical_and(g, ~p).sum()]
         g, p = np.isin(gt, self.defect_ids), np.isin(pred, self.defect_ids)
-        self.bin += [np.logical_and(g, p).sum(), np.logical_and(~g, p).sum(),
-                     np.logical_and(g, ~p).sum()]
+        b = np.array([np.logical_and(g, p).sum(), np.logical_and(~g, p).sum(),
+                      np.logical_and(g, ~p).sum()], float)
+        self.tp += rec[0]
+        self.fp += rec[1]
+        self.fn += rec[2]
+        self.bin += b
+        self.records.append((rec, b))
 
-    def result(self, names):
-        iou = self.tp / np.maximum(self.tp + self.fp + self.fn, 1)
-        dice = 2 * self.tp / np.maximum(2 * self.tp + self.fp + self.fn, 1)
-        present = [c for c in self.defect_ids if self.tp[c] + self.fn[c] > 0]
-        tp, fp, fn = self.bin
+    def result(self, names, idx=None):
+        if idx is None:
+            tp_c, fp_c, fn_c, bin_ = self.tp, self.fp, self.fn, self.bin
+        else:
+            tp_c, fp_c, fn_c = np.stack([r[0] for r in self.records])[idx].sum(0)
+            bin_ = np.stack([r[1] for r in self.records])[idx].sum(0)
+        iou = tp_c / np.maximum(tp_c + fp_c + fn_c, 1)
+        dice = 2 * tp_c / np.maximum(2 * tp_c + fp_c + fn_c, 1)
+        present = [c for c in self.defect_ids if tp_c[c] + fn_c[c] > 0]
+        tp, fp, fn = bin_
         return {
             "iou": {n: float(v) for n, v in zip(names, iou)},
             "dice": {n: float(v) for n, v in zip(names, dice)},
@@ -73,11 +93,27 @@ class SegMeter:
 class MAEMeter:
     def __init__(self):
         self.err, self.n = 0.0, 0
+        self.records = []       # per update: (sum of |error|, count)
 
     def update(self, true_pct, pred_pct):
         t, p = np.asarray(true_pct, float), np.asarray(pred_pct, float)
-        self.err += np.abs(t - p).sum()
+        e = np.abs(t - p).sum()
+        self.err += e
         self.n += t.size
+        self.records.append((e, t.size))
 
-    def result(self):
-        return float(self.err / max(self.n, 1))
+    def result(self, idx=None):
+        if idx is None:
+            return float(self.err / max(self.n, 1))
+        r = np.array(self.records)[idx]
+        return float(r[:, 0].sum() / max(r[:, 1].sum(), 1))
+
+
+def bootstrap_ci(n_items, stat_fn, n_boot=1000, seed=0, level=0.95):
+    """Percentile bootstrap CI. stat_fn(idx) -> dict of metric -> value, computed on the
+    items idx (drawn with replacement). Returns {metric: [low, high]}."""
+    rng = np.random.default_rng(seed)
+    draws = [stat_fn(rng.integers(0, n_items, n_items)) for _ in range(n_boot)]
+    a = (1 - level) / 2 * 100
+    return {k: [float(np.percentile([d[k] for d in draws], a)),
+                float(np.percentile([d[k] for d in draws], 100 - a))] for k in draws[0]}
