@@ -14,7 +14,8 @@ What this script does:
    the 8 rotated/flipped versions) and lists CROSS-ORIGINAL pairs within
    --max-dist bits, with a contact sheet to check them by eye.
 3. Merges only the pairs marked "yes" in a decisions CSV (--merges), never on the
-   threshold alone.
+   threshold alone (project rule: when unsure, merge). A pair marked "conflict"
+   (same photo/fruit, contradicting labels) drops BOTH images.
 4. Splits groups train/val/test, stratified by class (fresh/rotten x fruit).
 
 Usage:
@@ -179,16 +180,22 @@ def main():
             i = parent[i]
         return i
 
-    merged = []
+    merged, conflicts, drop = [], [], set()
     if args.merges:
-        yes = {int(d["pair_id"]) for d in csv.DictReader(open(args.merges, encoding="utf-8"))
-               if d["merge"].strip().lower() == "yes"}
+        decision = {int(d["pair_id"]): d["merge"].strip().lower()
+                    for d in csv.DictReader(open(args.merges, encoding="utf-8"))}
         for pid, a, b, d in pairs:
-            if pid in yes:
+            entry = {"pair_id": pid, "dist": d, "a": rows[a]["path"], "b": rows[b]["path"]}
+            if decision.get(pid) == "yes":
                 parent[max(find(a), find(b))] = min(find(a), find(b))
-                merged.append({"pair_id": pid, "dist": d, "a": rows[a]["path"], "b": rows[b]["path"]})
+                merged.append(entry)
+            elif decision.get(pid) == "conflict":
+                conflicts.append({**entry, "cls_a": rows[a]["cls"], "cls_b": rows[b]["cls"]})
+                drop |= {a, b}
     for i, r in enumerate(rows):
         r["group"] = find(i)
+    n_originals = len(rows)
+    rows = [r for i, r in enumerate(rows) if i not in drop]
 
     # 4. stratified group split
     members = defaultdict(list)
@@ -211,7 +218,7 @@ def main():
     audit = {
         "src": str(src), "seed": args.seed, "max_dist": args.max_dist,
         "files_total": sum(len(v) for v in versions.values()),
-        "originals": len(rows),
+        "originals": n_originals,
         "keys_without_exactly_one_original": len(no_original),
         "versions_per_original_hist": dict(sorted(n_versions.items())),
         "augmentation_type_counts": dict(sorted(Counter(
@@ -223,6 +230,9 @@ def main():
         "candidate_pairs_cross_class": sum(rows[a]["cls"] != rows[b]["cls"] for _, a, b, _ in pairs),
         "merge_decisions_file": args.merges,
         "merged_pairs": merged,
+        "label_conflict": conflicts,
+        "label_conflict_images_dropped": len(drop),
+        "originals_used": len(rows),
         "groups": len(members),
         "biggest_group": max(len(m) for m in members.values()),
         "mixed_class_groups": sum(len({r["cls"] for r in m}) > 1 for m in members.values()),
@@ -234,7 +244,8 @@ def main():
     }
     (out / "dataset_audit.json").write_text(json.dumps(audit, indent=2))
     print(json.dumps({k: v for k, v in audit.items() if k != "merged_pairs"}, indent=2))
-    print("merged pairs:", len(merged))
+    print("merged pairs:", len(merged), "| label conflicts:", len(conflicts),
+          "| images dropped:", len(drop))
 
 
 if __name__ == "__main__":
