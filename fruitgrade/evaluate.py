@@ -211,9 +211,13 @@ def main():
     ap.add_argument("--mc-passes", type=int, default=10)
     ap.add_argument("--bootstrap", type=int, default=1000, help="resamples for 95%% CIs (0 = off)")
     ap.add_argument("--boot-seed", type=int, default=0)
+    ap.add_argument("--title", default=None, help="heading put above every table/figure (e.g. PRELIMINARY ...)")
+    ap.add_argument("--image-size", type=int, default=None, help="evaluate at the size the model was trained on")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
+    if args.image_size:
+        cfg["data"]["image_size"] = args.image_size
     device = get_device()
     mq = args.mask_quality.split(",") if args.mask_quality else None
     ds = FruitDataset(cfg["data"]["root"], args.split, cfg["grades"], cfg["data"]["image_size"],
@@ -230,14 +234,16 @@ def main():
                                     n_boot=args.bootstrap, boot_seed=args.boot_seed)
         results.append(r)
         plot_confusion(r["classification"]["confusion_matrix"], cfg["grades"],
-                       f"{r['kind']} — acc {r['classification']['accuracy']:.1%}",
+                       (f"{args.title}\n" if args.title else "")
+                       + f"{r['kind']} — acc {r['classification']['accuracy']:.1%}",
                        out / f"confusion_{r['kind']}.png")
         save_sample_grid(samples, out / f"samples_{r['kind']}.png", r["kind"])
         print(json.dumps({k: v for k, v in r.items() if k not in ("classification",)}, indent=1)[:1500])
 
     json.dump(results, open(out / "metrics.json", "w"), indent=2)
     table = comparison_table(results)
-    (out / "comparison.md").write_text(f"# Test results ({len(ds)} images, split={args.split})\n\n{table}\n",
+    head = f"# {args.title}\n\n" if args.title else ""
+    (out / "comparison.md").write_text(f"{head}## Test results ({len(ds)} images, split={args.split})\n\n{table}\n",
                                        encoding="utf-8")
     print("\n" + table)
     print(f"\nSaved to {out.resolve()}")
