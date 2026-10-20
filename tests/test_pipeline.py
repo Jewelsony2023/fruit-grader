@@ -178,3 +178,21 @@ def test_splits_have_no_group_leak(tmp_path, monkeypatch):
     for e in entries:
         if e["path"] in got:
             assert got[e["path"]] == (e["split"], e["group"])
+
+
+def test_label_filter_flags_train_val_only(tmp_path):
+    from fruitgrade.data.dataset import FruitDataset, read_labels
+    from fruitgrade.data.label_filter import apply_filter
+    from fruitgrade.data.synthetic import write_labels
+    base = {"image": "images/x.jpg", "mask": "masks/x.png", "severity": 0, "fruit": "apple",
+            "mask_quality": "pseudo", "group": "0", "src": "x"}
+    cases = [("train", "kaggle_fresh", "Reject", "fresh_label_but_reject"),
+             ("val", "kaggle_rotten", "A", "rotten_label_but_A"),
+             ("train", "kaggle_fresh", "C", ""), ("val", "kaggle_rotten", "Reject", ""),
+             ("test", "kaggle_fresh", "Reject", ""), ("test", "kaggle_rotten", "A", "")]
+    rows = apply_filter([{**base, "split": s, "source": src, "grade": g} for s, src, g, _ in cases])
+    assert [r["excluded_reason"] for r in rows] == [c[3] for c in cases]
+    write_labels(tmp_path / "labels.csv", rows)
+    assert len(read_labels(tmp_path)) == 4 and len(read_labels(tmp_path, include_excluded=True)) == 6
+    assert len(FruitDataset(tmp_path, "train", CFG["grades"])) == 1      # the flagged train row is skipped
+    assert len(FruitDataset(tmp_path, "test", CFG["grades"])) == 2       # test is never filtered
