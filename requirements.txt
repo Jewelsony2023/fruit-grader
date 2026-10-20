@@ -13,3 +13,4 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 pytest>=8.0
+playwright>=1.40          # only for scripts/app_screenshots.py (uses installed Chrome)
