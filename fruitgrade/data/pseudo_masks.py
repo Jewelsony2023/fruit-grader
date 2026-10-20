@@ -2,13 +2,15 @@
 Pseudo-mask generation for images that only have a fresh/rotten label.
 
 Pipeline (one image):
-  1. Fruit vs background  -> GrabCut, seeded by Otsu on saturation + border colour.
+  1. Fruit vs background  -> GrabCut, seeded by Otsu on saturation + border colour;
+                             saturated green leaves/stems are removed (unless the fruit is green).
   2. Defect candidates    -> LAB colour space: pixels much darker than the fruit's
                              own healthy colour, plus whitish/grey mould pixels.
   3. Clean up             -> morphology, drop tiny blobs, ignore thin rim (shading).
   4. Defect type per blob -> simple shape/colour rules:
                                rot        : very dark, or contains mould, or big & textured
-                               mechanical : long & thin (cut / scratch)
+                               mechanical : SMALL, long & thin (cut / scratch)
+                             long thin blobs hugging the outline are dropped (contact shadow)
                                bruise     : everything else (moderate, smooth darkening)
   5. (optional) Grad-CAM  -> drop blobs the trained classifier does not look at.
 
@@ -57,7 +59,21 @@ def segment_fruit(rgb: np.ndarray, iters: int = 5) -> np.ndarray:
     except cv2.error:
         pass
     fruit = ((gc == cv2.GC_FGD) | (gc == cv2.GC_PR_FGD)).astype(np.uint8)
-    return _largest_component_filled(fruit)
+    fruit = _largest_component_filled(fruit)
+    return _remove_leaves(hsv, fruit)
+
+
+def _remove_leaves(hsv, fruit):
+    """Drop saturated green pixels (leaves, stems) unless the fruit itself is green."""
+    if fruit.sum() < 100:
+        return fruit
+    H, S = hsv[..., 0], hsv[..., 1]
+    green = (H >= 33) & (H <= 90) & (S > 60)
+    if green[fruit].mean() > 0.35:                     # green apple / unripe banana: keep everything
+        return fruit
+    left = (fruit & ~green).astype(np.uint8)
+    left = cv2.morphologyEx(left, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    return _largest_component_filled(left) if left.sum() > 0.5 * fruit.sum() else fruit
 
 
 def _largest_component_filled(binary: np.ndarray) -> np.ndarray:
@@ -115,7 +131,7 @@ def detect_defects(rgb, fruit, is_rotten=None, dark_ratio=0.72, min_blob_frac=0.
     Cref = np.percentile(chroma[inner], 60)
     # a pixel is "dark" if it is clearly below the brightness expected there
     # (ratio, so it works for both light and dark fruit); stricter for "fresh" images
-    ratio = dark_ratio * (0.9 if is_rotten is False else 1.0)
+    ratio = dark_ratio * (0.8 if is_rotten is False else 1.0)
     dark = L < ratio * shading
     # mould: whitish/grey, low chroma, blotchy (not a smooth specular highlight)
     mould = (chroma < 0.45 * Cref) & (L > Lref - 10) & (Cref > 15) & ~bright_thin
@@ -131,6 +147,9 @@ def detect_defects(rgb, fruit, is_rotten=None, dark_ratio=0.72, min_blob_frac=0.
     tex = np.sqrt(np.clip(cv2.blur(Lf ** 2, (7, 7)) - mu ** 2, 0, None)) * 255
 
     fruit_area = fruit.sum()
+    # distance from the fruit outline: long thin blobs hugging the outline are
+    # contact shadows / shading, not damage
+    edge_dist = cv2.distanceTransform(fruit_u8, cv2.DIST_L2, 5)
     n, cc, stats, _ = cv2.connectedComponentsWithStats(cand, 8)
     for k in range(1, n):
         area = stats[k, cv2.CC_STAT_AREA]
@@ -150,7 +169,13 @@ def detect_defects(rgb, fruit, is_rotten=None, dark_ratio=0.72, min_blob_frac=0.
         solidity = cv2.contourArea(c) / hull
         thickness = area / max(1.0, max(rw, rh))
 
-        if thin_frac > 0.2 or elong > 3.5 or (solidity < 0.45 and thickness < 6):
+        if elong > 3 and (edge_dist[blob] < 0.1 * diam).mean() > 0.7:
+            continue                                   # shading strip along the outline
+        # mechanical = SMALL and thin (a cut/scratch). Big elongated blobs are rot that
+        # follows the fruit's shape (e.g. a whole banana side), not a cut.
+        small = area < 0.03 * fruit_area
+        if small and (thin_frac > 0.3 or (elong > 4 and thickness < 0.04 * diam)
+                      or (solidity < 0.45 and thickness < 6)):
             cls = MECHANICAL
         elif dL > 45 or mould_frac > 0.25 or (area > 0.05 * fruit_area and texture > 9):
             cls = ROT
