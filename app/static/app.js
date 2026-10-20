@@ -181,7 +181,8 @@ async function loadReport() {
     ["Any-defect Dice", (x) => x.segmentation.any_defect_dice, "", true],
     ["Severity MAE (% points)", (x) => x.severity_mae_from_mask, "", false],
   ];
-  let h = `<table><tr><th>Metric</th>${m.map((x) => `<th>${x.kind}</th>`).join("")}</tr>`;
+  let h = r.title ? `<p class="review"><b>${r.title}</b></p>` : "";
+  h += `<table><tr><th>Metric</th>${m.map((x) => `<th>${x.kind}</th>`).join("")}</tr>`;
   rows.forEach(([name, fn, unit, higher]) => {
     const vals = m.map(fn);
     const best = higher ? Math.max(...vals) : Math.min(...vals);

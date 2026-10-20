@@ -9,7 +9,7 @@ Endpoints
     GET  /api/info         loaded models, grade names, mask colours, grading rules
     POST /api/predict      form-data: file=<image>, model=multitask|baseline
     GET  /api/samples      a few test images to try with one click
-    GET  /api/report       latest comparison table (reports/comparison.md + metrics.json)
+    GET  /api/report       latest comparison table (comparison.md + metrics.json in $FRUIT_REPORT_DIR, default reports/)
 """
 import argparse
 import base64
@@ -36,6 +36,7 @@ app = FastAPI(title="Fruit Quality Grader")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 PREDICTORS: dict = {}
 CFG = load_config()
+REPORT_DIR = Path(os.environ.get("FRUIT_REPORT_DIR") or PROJECT_ROOT / "reports")
 
 
 def _latest(pattern):
@@ -119,18 +120,20 @@ def sample(name: str):
 
 @app.get("/api/report")
 def report():
-    rep = PROJECT_ROOT / "reports"
+    rep = REPORT_DIR
     out = {}
     if (rep / "metrics.json").exists():
         out["metrics"] = json.loads((rep / "metrics.json").read_text())
     if (rep / "comparison.md").exists():
-        out["markdown"] = (rep / "comparison.md").read_text()
+        out["markdown"] = (rep / "comparison.md").read_text(encoding="utf-8")
+        first = out["markdown"].splitlines()[0] if out["markdown"] else ""
+        out["title"] = first[2:].strip() if first.startswith("# ") else ""
     return out
 
 
 @app.get("/api/report-image/{name}")
 def report_image(name: str):
-    p = PROJECT_ROOT / "reports" / Path(name).name
+    p = REPORT_DIR / Path(name).name
     if p.suffix != ".png" or not p.exists():
         raise HTTPException(404)
     return FileResponse(p)
