@@ -18,8 +18,10 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
-def read_labels(root, split=None, sources=None, mask_quality=None):
+def read_labels(root, split=None, sources=None, mask_quality=None, include_excluded=False):
     rows = list(csv.DictReader(open(Path(root) / "labels.csv", encoding="utf-8")))
+    if not include_excluded:                     # rows flagged by fruitgrade.data.label_filter
+        rows = [r for r in rows if not r.get("excluded_reason")]
     if split:
         rows = [r for r in rows if r["split"] == split]
     if sources:

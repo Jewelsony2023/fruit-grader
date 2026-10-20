@@ -25,6 +25,7 @@ import cv2
 import numpy as np
 
 from fruitgrade.config import load_config
+from fruitgrade.data.label_filter import apply_filter
 from fruitgrade.data.pseudo_masks import pseudo_mask
 from fruitgrade.data.synthetic import write_labels
 from fruitgrade.grading import colourise_mask, grade_from_severity, severity_from_mask
@@ -142,6 +143,7 @@ def main():
             print(f"  processed {len(rows)} images ...")
 
     check_no_group_leak(rows)
+    apply_filter(rows)
     write_labels(out / "labels.csv", rows, append=args.append)
     with open(out / "skipped.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["src", "reason"])
