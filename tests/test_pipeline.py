@@ -196,3 +196,12 @@ def test_label_filter_flags_train_val_only(tmp_path):
     assert len(read_labels(tmp_path)) == 4 and len(read_labels(tmp_path, include_excluded=True)) == 6
     assert len(FruitDataset(tmp_path, "train", CFG["grades"])) == 1      # the flagged train row is skipped
     assert len(FruitDataset(tmp_path, "test", CFG["grades"])) == 2       # test is never filtered
+
+
+def test_grading_rules_locked():
+    # Locked at commit 0e11134 (2026-10-19), before any real test evaluation.
+    # Changing them needs the project owner's explicit approval (see CLAUDE.md); update both together.
+    assert CFG["grading_rules"] == {"reject": {"total_pct": 30.0, "rot_pct": 10.0},
+                                    "c": {"total_pct": 10.0, "rot_pct": 2.0},
+                                    "b": {"total_pct": 2.0}}
+    assert CFG["grades"] == ["A", "B", "C", "Reject"]
