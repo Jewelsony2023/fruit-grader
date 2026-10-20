@@ -205,3 +205,40 @@ def test_grading_rules_locked():
                                     "c": {"total_pct": 10.0, "rot_pct": 2.0},
                                     "b": {"total_pct": 2.0}}
     assert CFG["grades"] == ["A", "B", "C", "Reject"]
+
+
+def test_cvat_export_round_trip(tmp_path, monkeypatch):
+    import csv
+    import json
+    import sys
+
+    import cv2
+    from fruitgrade.data import coco_to_masks
+    from fruitgrade.data.export_for_cvat import CVAT_MAP, coco_for
+    # fruit disc, rot ring around a healthy island (polygons cannot hold holes), a bruise and a cut
+    m = np.zeros((120, 120), np.uint8)
+    cv2.circle(m, (60, 60), 50, 1, -1)
+    cv2.circle(m, (45, 50), 22, 3, -1)
+    cv2.circle(m, (45, 50), 9, 1, -1)
+    cv2.circle(m, (85, 80), 8, 2, -1)
+    cv2.line(m, (70, 25), (95, 40), 4, 3)
+    (tmp_path / "img").mkdir()
+    cv2.imwrite(str(tmp_path / "img/t001.jpg"), np.full((120, 120, 3), 128, np.uint8))
+    (tmp_path / "ann.json").write_text(json.dumps(coco_for([("t001.jpg", m)], eps=1.0)))
+    with open(tmp_path / "manifest.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["file_name", "fruit", "group", "src"])
+        w.writeheader()
+        w.writerow({"file_name": "t001.jpg", "fruit": "apple", "group": "17", "src": "test/rottenapples/x.png"})
+    monkeypatch.setattr(sys, "argv", ["x", "--json", str(tmp_path / "ann.json"), "--images", str(tmp_path / "img"),
+                                      "--map", CVAT_MAP, "--manifest", str(tmp_path / "manifest.csv"),
+                                      "--out", str(tmp_path / "out"), "--prefix", "cvat"])
+    coco_to_masks.main()
+    row = next(csv.DictReader(open(tmp_path / "out/labels.csv")))
+    back = cv2.imread(str(tmp_path / "out" / row["mask"]), cv2.IMREAD_UNCHANGED)
+    assert (row["group"], row["src"], row["fruit"], row["mask_quality"]) == ("17", "test/rottenapples/x.png",
+                                                                             "apple", "verified")
+    assert back[50, 45] == 1                                      # healthy island survives
+    for c in range(5):
+        inter, union = ((m == c) & (back == c)).sum(), ((m == c) | (back == c)).sum()
+        assert inter / union > 0.85, c
+    assert abs(severity_from_mask(m)["total_pct"] - severity_from_mask(back)["total_pct"]) < 1.0
