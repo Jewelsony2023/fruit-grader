@@ -2,23 +2,21 @@
 Turn a fresh/rotten folder dataset (e.g. Kaggle "Fruits fresh and rotten for
 classification") into this project's format:  images/ + masks/ + labels.csv
 
-Expected input: any folder tree where the folder names contain "fresh" or
-"rotten" and (optionally) the fruit name, e.g.
-    dataset/train/freshapples/*.png
-    dataset/train/rottenbanana/*.png
-    dataset/test/freshoranges/*.png
-If the path contains a "test" folder those images go to the test split;
-the rest are split train/val.
+Which images and which split come ONLY from the splits file written by
+fruitgrade.data.dedupe (originals only, split by near-duplicate group).
+Folder names give fresh/rotten and the fruit, e.g. train/rottenbanana/X.png.
+There is no random splitting here: a near-copy in another split would leak.
 
 Grade labels are DERIVED from the pseudo-mask severity with the rules in
 config.yaml (the Kaggle data only says fresh/rotten — it has no A/B/C grades).
 
 Usage:
-    python -m fruitgrade.data.prepare_kaggle --src path/to/dataset --out data/processed
+    python -m fruitgrade.data.prepare_kaggle --src D:/datasets/fruits/dataset --out data/processed
     # second round, after training a model (Grad-CAM refinement):
     python -m fruitgrade.data.prepare_kaggle --src ... --cam-checkpoint runs/baseline/best.pt
 """
 import argparse
+import csv
 import re
 from collections import Counter
 from pathlib import Path
@@ -56,13 +54,28 @@ def resize_max(img, max_side):
     return cv2.resize(img, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
 
 
+def load_splits(path):
+    """Rows of the dedupe splits file: path, cls, group, split, ..."""
+    return list(csv.DictReader(open(path, encoding="utf-8")))
+
+
+def check_no_group_leak(rows):
+    """Raise if any near-duplicate group appears in more than one split."""
+    splits = {}
+    for r in rows:
+        splits.setdefault(r["group"], set()).add(r["split"])
+    leaks = {g: sorted(s) for g, s in splits.items() if len(s) > 1}
+    if leaks:
+        raise ValueError(f"{len(leaks)} groups span several splits, e.g. {list(leaks.items())[:3]}")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", required=True)
+    ap.add_argument("--src", required=True, help="dataset tree the splits-file paths are relative to")
+    ap.add_argument("--splits", default="data/interim/splits.csv", help="output of fruitgrade.data.dedupe")
     ap.add_argument("--out", default=None)
     ap.add_argument("--max-side", type=int, default=384)
     ap.add_argument("--limit-per-class", type=int, default=0, help="0 = use all")
-    ap.add_argument("--val-frac", type=float, default=0.15)
     ap.add_argument("--preview", type=int, default=40, help="save N overlay previews to check by eye")
     ap.add_argument("--cam-checkpoint", default=None, help="optional: refine masks with Grad-CAM")
     ap.add_argument("--append", action="store_true", help="append to existing labels.csv")
@@ -81,15 +94,13 @@ def main():
         reject = pred.grades.index("Reject")
         cam_fn = lambda rgb: pred.gradcam(rgb, target=reject)  # noqa: E731
 
-    files = [p for p in Path(args.src).rglob("*") if p.suffix.lower() in IMG_EXT]
-    rng = np.random.default_rng(cfg["train"]["seed"])
-    rng.shuffle(files)
+    entries = load_splits(args.splits)
+    check_no_group_leak(entries)
     per_class = Counter()
-    rows, n_prev = [], 0
-    for i, p in enumerate(files):
-        info = parse_path(p.relative_to(args.src))
-        if info is None:
-            continue
+    rows, skipped, n_prev = [], [], 0
+    for i, e in enumerate(entries):
+        p = Path(args.src) / e["path"]
+        info = parse_path(Path(e["path"]))
         key = (info["fruit"], info["rotten"])
         if args.limit_per_class and per_class[key] >= args.limit_per_class:
             continue
@@ -97,6 +108,7 @@ def main():
 
         bgr = cv2.imread(str(p))
         if bgr is None:
+            skipped.append({"src": e["path"], "reason": "unreadable"})
             continue
         rgb = cv2.cvtColor(resize_max(bgr, args.max_side), cv2.COLOR_BGR2RGB)
         cam = None
@@ -104,19 +116,19 @@ def main():
             cam = cv2.resize(cam_fn(rgb), rgb.shape[1::-1])
         mask = pseudo_mask(rgb, is_rotten=info["rotten"], cam=cam)
         sev = severity_from_mask(mask)
-        if sev["fruit_pixels"] < 0.05 * mask.size:   # fruit not found -> skip
+        if sev["fruit_pixels"] < 0.05 * mask.size:   # fruit not found -> skip (and log it)
+            skipped.append({"src": e["path"], "reason": "fruit not found"})
             continue
         g = grade_from_severity(sev, cfg["grading_rules"])
 
         name = f"kg_{'rot' if info['rotten'] else 'fr'}_{info['fruit']}_{i:06d}"
         cv2.imwrite(str(out / "images" / f"{name}.jpg"), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
         cv2.imwrite(str(out / "masks" / f"{name}.png"), mask)
-        split = "test" if info["is_test"] else ("val" if rng.random() < args.val_frac else "train")
         rows.append({"image": f"images/{name}.jpg", "mask": f"masks/{name}.png",
                      "grade": cfg["grades"][g], "severity": round(sev["total_pct"], 3),
-                     "split": split, "fruit": info["fruit"],
+                     "split": e["split"], "fruit": info["fruit"],
                      "source": "kaggle_rotten" if info["rotten"] else "kaggle_fresh",
-                     "mask_quality": "pseudo"})
+                     "mask_quality": "pseudo", "group": e["group"], "src": e["path"]})
 
         if n_prev < args.preview:
             over = rgb.copy()
@@ -129,8 +141,13 @@ def main():
         if len(rows) % 200 == 0:
             print(f"  processed {len(rows)} images ...")
 
+    check_no_group_leak(rows)
     write_labels(out / "labels.csv", rows, append=args.append)
-    print(f"Wrote {len(rows)} samples -> {out}")
+    with open(out / "skipped.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["src", "reason"])
+        w.writeheader()
+        w.writerows(skipped)
+    print(f"Wrote {len(rows)} samples -> {out}  (skipped {len(skipped)}, see skipped.csv)")
     print("grades :", Counter(r["grade"] for r in rows))
     print("splits :", Counter(r["split"] for r in rows))
     print(f"Check previews in {out / 'preview'} before training!")

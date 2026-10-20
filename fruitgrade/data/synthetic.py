@@ -228,7 +228,7 @@ def main():
     print("splits:", Counter(r["split"] for r in rows))
 
 
-LABEL_FIELDS = ["image", "mask", "grade", "severity", "split", "fruit", "source", "mask_quality"]
+LABEL_FIELDS = ["image", "mask", "grade", "severity", "split", "fruit", "source", "mask_quality", "group", "src"]
 
 
 def write_labels(path, rows, append=False):

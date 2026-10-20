@@ -138,3 +138,43 @@ def test_bootstrap_ci():
     table = comparison_table([r])
     lo, hi = ci["accuracy"]
     assert f"[{lo * 100:.1f}, {hi * 100:.1f}]" in table and "2.00 [2.00, 2.00]" in table
+
+
+def test_splits_have_no_group_leak(tmp_path, monkeypatch):
+    import csv
+    import sys
+    from pathlib import Path
+
+    import cv2
+    import pytest
+    from fruitgrade.data import prepare_kaggle
+    from fruitgrade.data.dedupe import AUG_RE
+    # 1. the tracked project split: originals only, no group in two splits
+    rows = prepare_kaggle.load_splits(Path(__file__).parent.parent / "results/data_audit/splits.csv")
+    assert len(rows) == 1511 and not any(AUG_RE.match(Path(r["path"]).name) for r in rows)
+    prepare_kaggle.check_no_group_leak(rows)
+    # 2. the check really fires
+    with pytest.raises(ValueError):
+        prepare_kaggle.check_no_group_leak([{"group": "7", "split": "train"}, {"group": "7", "split": "test"}])
+    # 3. prepare_kaggle takes split + group from the splits file, never re-splits
+    rng = np.random.default_rng(5)
+    src, entries = tmp_path / "src", []
+    for i, (folder, split, group) in enumerate([("freshapples", "train", "0"), ("rottenapples", "train", "1"),
+                                                ("freshbanana", "val", "2"), ("rottenoranges", "test", "3")]):
+        (src / "train" / folder).mkdir(parents=True, exist_ok=True)
+        img = make_sample(160, 2, rng, RULES)[0]
+        cv2.imwrite(str(src / "train" / folder / f"{i}.png"), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        entries.append({"path": f"train/{folder}/{i}.png", "split": split, "group": group})
+    with open(tmp_path / "splits.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["path", "split", "group"])
+        w.writeheader()
+        w.writerows(entries)
+    monkeypatch.setattr(sys, "argv", ["x", "--src", str(src), "--splits", str(tmp_path / "splits.csv"),
+                                      "--out", str(tmp_path / "out"), "--preview", "0"])
+    prepare_kaggle.main()
+    got = {r["src"]: (r["split"], r["group"]) for r in csv.DictReader(open(tmp_path / "out/labels.csv"))}
+    skipped = [r["src"] for r in csv.DictReader(open(tmp_path / "out/skipped.csv"))]
+    assert {e["path"] for e in entries} == set(got) | set(skipped) and len(got) >= 3
+    for e in entries:
+        if e["path"] in got:
+            assert got[e["path"]] == (e["split"], e["group"])
