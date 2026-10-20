@@ -1,0 +1,54 @@
+pair_id,merge,note
+1,yes,same photo/fruit
+2,yes,same photo/fruit
+3,yes,same photo/fruit
+4,yes,same photo/fruit
+5,yes,same photo/fruit
+6,yes,same photo/fruit
+7,yes,same photo/fruit
+8,yes,same photo/fruit
+9,yes,same photo/fruit
+10,yes,same photo/fruit
+11,yes,same photo/fruit
+12,yes,same photo/fruit
+13,yes,same photo/fruit
+14,no,"different apples (leaf, shape)"
+15,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+16,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+17,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+18,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+19,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+20,yes,"close call: similar pose, different colour/shape -> merged per rule: when unsure, merge"
+21,no,different banana
+22,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+23,yes,"close call: similar pose, different stem/thickness -> merged per rule: when unsure, merge"
+24,no,different bunch
+25,no,different bunch
+26,yes,same photo/fruit
+27,yes,same photo/fruit
+28,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+29,no,different oranges
+30,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+31,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+32,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+33,no,different apples
+34,yes,same photo/fruit
+35,yes,same photo/fruit
+36,yes,same photo/fruit
+37,yes,same photo/fruit
+38,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+39,yes,same photo/fruit
+40,yes,same photo/fruit
+41,yes,"close call: similar pose, different spotting -> merged per rule: when unsure, merge"
+42,yes,horizontal mirror of same photo
+43,yes,same photo/fruit
+44,no,different banana
+45,yes,same photo/fruit
+46,yes,same photo/fruit
+47,no,"cross-class; re-checked enlarged: different fruit, not a label conflict"
+48,yes,same photo/fruit
+49,yes,same photo/fruit
+50,yes,same photo/fruit
+51,yes,same photo/fruit
+52,yes,same photo/fruit
+53,yes,same photo/fruit

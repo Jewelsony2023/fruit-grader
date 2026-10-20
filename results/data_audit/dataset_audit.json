@@ -1,0 +1,280 @@
+{
+  "src": "D:\\datasets\\fruits\\dataset",
+  "seed": 42,
+  "max_dist": 6,
+  "files_total": 13599,
+  "originals": 1511,
+  "keys_without_exactly_one_original": 0,
+  "versions_per_original_hist": {
+    "9": 1511
+  },
+  "augmentation_type_counts": {
+    "original": 1511,
+    "rotated_by_N_": 7555,
+    "saltandpepper_": 1511,
+    "translation_": 1511,
+    "vertical_flip_": 1511
+  },
+  "kaggle_split_leak_originals": 1310,
+  "kaggle_originals_by_split": {
+    "train": 1182,
+    "test": 329
+  },
+  "candidate_pairs_within_max_dist": 53,
+  "originals_in_candidate_pairs": 98,
+  "candidate_pairs_cross_class": 12,
+  "merge_decisions_file": "data/interim/merge_decisions.csv",
+  "merged_pairs": [
+    {
+      "pair_id": 1,
+      "dist": 2,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 4.59.36 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.09.10 PM.png"
+    },
+    {
+      "pair_id": 2,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 4.59.49 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.11.08 PM.png"
+    },
+    {
+      "pair_id": 3,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 4.59.57 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.11.16 PM.png"
+    },
+    {
+      "pair_id": 4,
+      "dist": 2,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.00.03 PM.png",
+      "b": "test/freshapples/Screen Shot 2018-06-08 at 5.09.17 PM.png"
+    },
+    {
+      "pair_id": 5,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.00.03 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.10.53 PM.png"
+    },
+    {
+      "pair_id": 6,
+      "dist": 0,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.00.12 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.10.11 PM.png"
+    },
+    {
+      "pair_id": 7,
+      "dist": 4,
+      "a": "test/freshapples/Screen Shot 2018-06-08 at 5.01.41 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.15.52 PM.png"
+    },
+    {
+      "pair_id": 8,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.02.24 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.27.19 PM.png"
+    },
+    {
+      "pair_id": 9,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.03.05 PM.png",
+      "b": "test/freshapples/Screen Shot 2018-06-08 at 5.27.06 PM.png"
+    },
+    {
+      "pair_id": 10,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.04.11 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.14.20 PM.png"
+    },
+    {
+      "pair_id": 11,
+      "dist": 2,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.04.59 PM.png",
+      "b": "test/freshapples/Screen Shot 2018-06-08 at 5.28.24 PM.png"
+    },
+    {
+      "pair_id": 12,
+      "dist": 6,
+      "a": "test/freshapples/Screen Shot 2018-06-08 at 5.09.17 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.10.53 PM.png"
+    },
+    {
+      "pair_id": 13,
+      "dist": 6,
+      "a": "train/freshapples/Screen Shot 2018-06-08 at 5.09.25 PM.png",
+      "b": "train/freshapples/Screen Shot 2018-06-08 at 5.10.03 PM.png"
+    },
+    {
+      "pair_id": 20,
+      "dist": 6,
+      "a": "train/freshbanana/Screen Shot 2018-06-12 at 10.01.52 PM.png",
+      "b": "test/freshbanana/Screen Shot 2018-06-12 at 9.38.04 PM.png"
+    },
+    {
+      "pair_id": 23,
+      "dist": 6,
+      "a": "train/freshbanana/Screen Shot 2018-06-12 at 9.47.59 PM.png",
+      "b": "train/freshbanana/Screen Shot 2018-06-12 at 9.48.21 PM.png"
+    },
+    {
+      "pair_id": 26,
+      "dist": 4,
+      "a": "test/freshoranges/Screen Shot 2018-06-12 at 11.50.14 PM.png",
+      "b": "test/freshoranges/Screen Shot 2018-06-12 at 11.50.41 PM.png"
+    },
+    {
+      "pair_id": 27,
+      "dist": 6,
+      "a": "train/freshoranges/Screen Shot 2018-06-12 at 11.51.13 PM.png",
+      "b": "train/freshoranges/Screen Shot 2018-06-12 at 11.52.21 PM.png"
+    },
+    {
+      "pair_id": 34,
+      "dist": 4,
+      "a": "train/rottenapples/Screen Shot 2018-06-07 at 2.45.09 PM.png",
+      "b": "test/rottenapples/Screen Shot 2018-06-07 at 2.54.41 PM.png"
+    },
+    {
+      "pair_id": 35,
+      "dist": 6,
+      "a": "train/rottenapples/Screen Shot 2018-06-07 at 2.47.35 PM.png",
+      "b": "test/rottenapples/Screen Shot 2018-06-07 at 2.47.50 PM.png"
+    },
+    {
+      "pair_id": 36,
+      "dist": 6,
+      "a": "train/rottenapples/Screen Shot 2018-06-07 at 3.17.25 PM.png",
+      "b": "train/rottenapples/Screen Shot 2018-06-08 at 2.23.48 PM.png"
+    },
+    {
+      "pair_id": 37,
+      "dist": 4,
+      "a": "test/rottenapples/Screen Shot 2018-06-08 at 2.25.24 PM.png",
+      "b": "train/rottenapples/Screen Shot 2018-06-08 at 2.46.44 PM.png"
+    },
+    {
+      "pair_id": 39,
+      "dist": 6,
+      "a": "train/rottenapples/Screen Shot 2018-06-08 at 2.30.57 PM.png",
+      "b": "train/rottenapples/Screen Shot 2018-06-08 at 2.31.23 PM.png"
+    },
+    {
+      "pair_id": 40,
+      "dist": 4,
+      "a": "train/rottenbanana/Screen Shot 2018-06-12 at 8.52.01 PM.png",
+      "b": "test/rottenbanana/Screen Shot 2018-06-12 at 8.52.16 PM.png"
+    },
+    {
+      "pair_id": 41,
+      "dist": 6,
+      "a": "train/rottenbanana/Screen Shot 2018-06-12 at 9.01.51 PM.png",
+      "b": "test/rottenbanana/Screen Shot 2018-06-12 at 9.09.05 PM.png"
+    },
+    {
+      "pair_id": 42,
+      "dist": 6,
+      "a": "test/rottenbanana/Screen Shot 2018-06-12 at 9.05.37 PM.png",
+      "b": "test/rottenbanana/Screen Shot 2018-06-12 at 9.11.00 PM.png"
+    },
+    {
+      "pair_id": 43,
+      "dist": 2,
+      "a": "test/rottenbanana/Screen Shot 2018-06-12 at 9.14.22 PM.png",
+      "b": "train/rottenbanana/Screen Shot 2018-06-12 at 9.14.48 PM.png"
+    },
+    {
+      "pair_id": 45,
+      "dist": 6,
+      "a": "train/rottenbanana/Screen Shot 2018-06-12 at 9.20.31 PM.png",
+      "b": "test/rottenbanana/Screen Shot 2018-06-12 at 9.21.25 PM.png"
+    },
+    {
+      "pair_id": 46,
+      "dist": 6,
+      "a": "train/rottenbanana/Screen Shot 2018-06-12 at 9.20.56 PM.png",
+      "b": "train/rottenbanana/Screen Shot 2018-06-12 at 9.21.20 PM.png"
+    },
+    {
+      "pair_id": 48,
+      "dist": 6,
+      "a": "test/rottenoranges/Screen Shot 2018-06-12 at 11.19.56 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.44.34 PM.png"
+    },
+    {
+      "pair_id": 49,
+      "dist": 4,
+      "a": "train/rottenoranges/Screen Shot 2018-06-12 at 11.23.13 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.37.25 PM.png"
+    },
+    {
+      "pair_id": 50,
+      "dist": 6,
+      "a": "train/rottenoranges/Screen Shot 2018-06-12 at 11.25.16 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.45.42 PM.png"
+    },
+    {
+      "pair_id": 51,
+      "dist": 6,
+      "a": "train/rottenoranges/Screen Shot 2018-06-12 at 11.31.52 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.34.00 PM.png"
+    },
+    {
+      "pair_id": 52,
+      "dist": 2,
+      "a": "train/rottenoranges/Screen Shot 2018-06-12 at 11.32.50 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.33.23 PM.png"
+    },
+    {
+      "pair_id": 53,
+      "dist": 6,
+      "a": "train/rottenoranges/Screen Shot 2018-06-12 at 11.41.04 PM.png",
+      "b": "train/rottenoranges/Screen Shot 2018-06-12 at 11.41.22 PM.png"
+    }
+  ],
+  "label_conflict": [],
+  "label_conflict_images_dropped": 0,
+  "originals_used": 1511,
+  "groups": 1478,
+  "biggest_group": 3,
+  "mixed_class_groups": 0,
+  "split_images": {
+    "train": 1057,
+    "val": 227,
+    "test": 227
+  },
+  "split_groups": {
+    "train": 1037,
+    "val": 220,
+    "test": 221
+  },
+  "split_by_class": {
+    "train": {
+      "fresh_apple": 162,
+      "fresh_banana": 152,
+      "fresh_orange": 144,
+      "rotten_apple": 229,
+      "rotten_banana": 214,
+      "rotten_orange": 156
+    },
+    "val": {
+      "fresh_apple": 35,
+      "fresh_banana": 33,
+      "fresh_orange": 31,
+      "rotten_apple": 49,
+      "rotten_banana": 46,
+      "rotten_orange": 33
+    },
+    "test": {
+      "fresh_apple": 35,
+      "fresh_banana": 33,
+      "fresh_orange": 31,
+      "rotten_apple": 49,
+      "rotten_banana": 46,
+      "rotten_orange": 33
+    }
+  },
+  "contact_sheets": [
+    "contact_sheet_1.png",
+    "contact_sheet_2.png",
+    "contact_sheet_3.png"
+  ]
+}
