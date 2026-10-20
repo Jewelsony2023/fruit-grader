@@ -40,6 +40,18 @@ VIT capstone: one multi-task model for fruit grading (grade A/B/C/Reject, defect
 - Split 70/15/15 by group, stratified by class (fresh/rotten x fruit), seed 42. No group spans two splits.
 - (The first attempt, pHash with union-find over all 13,599 files, chained unrelated rotated images into a 1,053-image group. Don't use it.)
 
+### Pseudo-masks (Phase 2, `fruitgrade/data/pseudo_masks.py`, approved state = commit 1fe3361)
+- Tuning changes kept: mechanical = small and thin only; long thin blobs hugging the outline dropped (contact shadow); green leaves/stems removed unless the fruit is green; stricter darkness threshold for fresh-labelled images (x0.8).
+- Tried and reverted (measured worse): chroma/colour checks, skipping large bright-texture blobs, a texture cue for white mould. Keep the mould cue out.
+- Known limits: white mould is often missed (rotten oranges graded A), deep-red apple skin can read as rot, several fruit in one picture keeps only the largest.
+- Check any change with `python -m fruitgrade.data.pm_eval` (fresh/rotten agreement 197/240, synthetic defect IoU 0.594, severity MAE 3.58 at approval) and the before/after sheets from `fruitgrade.data.contact_sheet`.
+- The 240-image tuning sample and the 144-image sheet sample were drawn from all splits (tuning: 167 train / 33 val / 40 test). Recorded in the audit; not fixed. Say so in the report.
+- **Note for the report (weak supervision):** training labels use the image-level Kaggle fresh/rotten label as weak supervision (the x0.8 prior and the consistency filter). Inference never sees that label. Test ground truth comes from CVAT, not from pseudo-masks.
+
+### Label-consistency filter (`fruitgrade/data/label_filter.py`)
+- Train and val only; test is never touched. Fresh label + pseudo grade Reject, or rotten label + pseudo grade A, gets `excluded_reason` in labels.csv (flagged, not deleted). `FruitDataset` skips flagged rows.
+- At approval: 71 rows excluded (62 train, 9 val). Counts are in the audit under `label_consistency_filter`.
+
 ### Evaluation
 - `evaluate.py` reports 95% bootstrap CIs (1,000 resamples, by image) as "value [low, high]" for accuracy, macro-F1, defect IoU/Dice and severity MAE.
 
@@ -47,8 +59,15 @@ VIT capstone: one multi-task model for fruit grading (grade A/B/C/Reject, defect
 - Add AMP (autocast + GradScaler) and a `--grad-accum` option to `train.py`, with tests.
 - Write `notebooks/train_kaggle.ipynb`.
 
+## Grading rules: LOCKED
+- Grading rules locked at commit 0e11134, 2026-10-19 (lock recorded 2026-10-20), before any real test evaluation.
+- Changing `grading_rules` in config.yaml needs the user's **explicit approval**. `test_grading_rules_locked` fails on any change; update it only together with an approved change.
+
+## Git
+- Remote: `origin` = https://github.com/Jewelsony2023/fruit-grader (branch `main`). Push after each batch of commits.
+
 ## Rules
 - Never invent numbers or round them up. Report every seed, not only the best one.
-- Ask before changing the grading rules, deleting data, or starting any run longer than 2 h.
+- Ask before changing the grading rules (locked, see above), deleting data, or starting any run longer than 2 h.
 - Explain each step in simple terms.
 - Make small, focused commits.
