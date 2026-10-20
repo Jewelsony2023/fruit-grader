@@ -127,14 +127,16 @@ def plot_confusion(cm, names, title, path):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import textwrap
     cm = np.array(cm)
-    fig, ax = plt.subplots(figsize=(4.2, 3.8))
+    title = "\n".join(textwrap.fill(line, 48) for line in title.split("\n"))   # long titles must not be cut off
+    fig, ax = plt.subplots(figsize=(4.2, 3.8 + 0.18 * title.count("\n")))
     ax.imshow(cm, cmap="Greens")
     ax.set_xticks(range(len(names)), names)
     ax.set_yticks(range(len(names)), names)
     ax.set_xlabel("Predicted")
     ax.set_ylabel("True")
-    ax.set_title(title, fontsize=10)
+    ax.set_title(title, fontsize=8 if "\n" in title else 10)
     for i in range(len(names)):
         for j in range(len(names)):
             ax.text(j, i, cm[i, j], ha="center", va="center",
@@ -149,6 +151,8 @@ def save_sample_grid(samples, path, label):
     for s in samples:
         def tag(img, text):
             img = img.copy()
+            # dark outline so the label is readable on white backgrounds too
+            cv2.putText(img, text, (4, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 3, cv2.LINE_AA)
             cv2.putText(img, text, (4, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
             return img
         rows.append(np.hstack([
