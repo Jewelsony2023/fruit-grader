@@ -10,6 +10,8 @@ Endpoints
     POST /api/predict      form-data: file=<image>, model=multitask|baseline
     GET  /api/samples      a few test images to try with one click
     GET  /api/report       latest comparison table (comparison.md + metrics.json in $FRUIT_REPORT_DIR, default reports/)
+    GET  /dashboard        presentation dashboard (app/static/dashboard.html), works offline
+    GET  /api/dashboard    all dashboard data, read from $FRUIT_DASHBOARD_DIR (default results/preliminary)
 """
 import argparse
 import base64
@@ -24,6 +26,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import dashboard
 from fruitgrade.config import PROJECT_ROOT, load_config
 from fruitgrade.data.dataset import read_labels
 from fruitgrade.grading import MASK_COLOURS
@@ -37,6 +40,7 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 PREDICTORS: dict = {}
 CFG = load_config()
 REPORT_DIR = Path(os.environ.get("FRUIT_REPORT_DIR") or PROJECT_ROOT / "reports")
+DASH_DIR = Path(os.environ.get("FRUIT_DASHBOARD_DIR") or PROJECT_ROOT / "results" / "preliminary")
 
 
 def _latest(pattern):
@@ -135,6 +139,30 @@ def report():
 def report_image(name: str):
     p = REPORT_DIR / Path(name).name
     if p.suffix != ".png" or not p.exists():
+        raise HTTPException(404)
+    return FileResponse(p)
+
+
+@app.get("/dashboard")
+def dashboard_page():
+    return FileResponse(STATIC / "dashboard.html")
+
+
+@app.get("/api/dashboard")
+def dashboard_data():
+    missing = [f for f in ("metrics.json", "paired_bootstrap.json", "model_info.json", "predictions.csv")
+               if not (DASH_DIR / f).exists()]
+    if missing:
+        raise HTTPException(404, f"Missing in {DASH_DIR}: {', '.join(missing)}. Run python -m fruitgrade.predict_split")
+    return JSONResponse(dashboard.build(DASH_DIR))
+
+
+@app.get("/api/dashboard/thumb/{model}/{name}")
+def dashboard_thumb(model: str, name: str):
+    if model not in dashboard.MODELS:
+        raise HTTPException(404)
+    p = DASH_DIR / "thumbs" / model / f"{Path(name).stem}.jpg"
+    if not p.exists():
         raise HTTPException(404)
     return FileResponse(p)
 

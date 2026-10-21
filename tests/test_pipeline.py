@@ -1,5 +1,6 @@
 """Fast checks that every piece fits together. Run:  pytest -q"""
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -242,3 +243,71 @@ def test_cvat_export_round_trip(tmp_path, monkeypatch):
         inter, union = ((m == c) & (back == c)).sum(), ((m == c) | (back == c)).sum()
         assert inter / union > 0.85, c
     assert abs(severity_from_mask(m)["total_pct"] - severity_from_mask(back)["total_pct"]) < 1.0
+
+
+def test_per_class_metrics():
+    from fruitgrade.metrics import ClsMeter
+    cls = ClsMeter(4)
+    cls.update([0, 0, 1, 2, 3, 3], [0, 1, 1, 2, 3, 0])
+    pc = cls.result(CFG["grades"])["per_class"]
+    assert pc["A"] == {"precision": 0.5, "recall": 0.5, "f1": 0.5, "support": 2}
+    assert pc["B"]["precision"] == 0.5 and pc["B"]["recall"] == 1.0 and pc["Reject"]["support"] == 2
+
+
+def test_paired_bootstrap_toy():
+    from fruitgrade.metrics import paired_bootstrap_diff
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0, 1, 80)                 # per-image scores that vary a lot between images
+    mean = lambda v: (lambda idx: {"m": float(v.mean() if idx is None else v[idx].mean())})  # noqa: E731
+    # A is B + 0.05 on EVERY image: pairing removes the image-to-image spread, so the CI is exact
+    d = paired_bootstrap_diff(80, mean(x + 0.05), mean(x), n_boot=300, seed=0)["m"]
+    assert abs(d["diff"] - 0.05) < 1e-12 and np.allclose(d["ci95"], [0.05, 0.05]) and d["excludes_zero"]
+    # identical models -> difference 0, CI [0, 0], does not exclude 0
+    d = paired_bootstrap_diff(80, mean(x), mean(x), n_boot=100, seed=0)["m"]
+    assert d["diff"] == 0 and d["ci95"] == [0.0, 0.0] and not d["excludes_zero"]
+    # unrelated noise of the same size -> CI spans 0
+    d = paired_bootstrap_diff(80, mean(rng.uniform(0, 1, 80)), mean(x), n_boot=300, seed=0)["m"]
+    assert d["ci95"][0] < d["diff"] < d["ci95"][1]
+
+
+PRELIM = Path(__file__).resolve().parent.parent / "results" / "preliminary"
+
+
+@pytest.mark.skipif(not (PRELIM / "predictions.csv").exists(), reason="run fruitgrade.predict_split first")
+def test_predictions_csv_schema_and_rows():
+    import csv
+    import json
+    from fruitgrade.predict_split import PRED_COLUMNS
+    root = PRELIM.parent.parent
+    with open(PRELIM / "predictions.csv", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        assert reader.fieldnames == PRED_COLUMNS
+        rows = list(reader)
+    n_test = json.loads((root / "results/data_audit/dataset_audit.json").read_text())["split_images"]["test"]
+    assert n_test == 227 and len(rows) == 227 * 2
+    by = {m: [r for r in rows if r["model"] == m] for m in ("multitask", "baseline")}
+    assert [r["image"] for r in by["multitask"]] == [r["image"] for r in by["baseline"]]   # same images, same order
+    assert len({r["image"] for r in by["multitask"]}) == 227
+    metrics = {m["kind"]: m for m in json.loads((PRELIM / "metrics.json").read_text())}
+    for m, rs in by.items():
+        assert all(r["pred_grade"] in CFG["grades"] and r["true_grade"] in CFG["grades"] for r in rs)
+        assert all(abs(sum(float(r[f"p_{g}"]) for g in CFG["grades"]) - 1) < 1e-4 for r in rs)
+        assert all((r["pred_severity_head"] != "") == (m == "multitask") for r in rs)
+        acc = sum(int(r["correct"]) for r in rs) / len(rs)       # CSV and metrics.json come from the same run
+        assert abs(acc - metrics[m]["classification"]["accuracy"]) < 1e-12
+        mae = sum(abs(float(r["true_severity"]) - float(r["pred_severity_mask"])) for r in rs) / len(rs)
+        assert abs(mae - metrics[m]["severity_mae_from_mask"]) < 1e-4
+
+
+@pytest.mark.skipif(not (PRELIM / "predictions.csv").exists(), reason="run fruitgrade.predict_split first")
+def test_dashboard_data_consistent():
+    from app import dashboard
+    d = dashboard.build(PRELIM)
+    assert d["warnings"] == [] and d["banner"].startswith("PRELIMINARY")
+    for m in dashboard.MODELS:
+        n = d["metrics"][m]["n"]
+        assert sum(len(v) for v in d["confusion"][m].values()) == n
+        assert sum(b["n"] for b in d["confidence"][m]["reliability"]["bins"]) == n
+        assert sum(d["severity"][m]["hist_mask"]["counts"]) == n
+        assert len(d["errors"][m]["confident_wrong"]) == 12 and len(d["errors"][m]["severity"]) == 12
+        assert all(not d["predictions"][m][i]["correct"] for i in d["errors"][m]["confident_wrong"])

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fruit Grader Results</title>
+  <!-- fully offline: no web fonts, no CDN. Chart.js is vendored. -->
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header class="d-top">
+  <div class="brand">
+    <div class="logo">●</div>
+    <div>
+      <h1>Fruit Quality Grader: results</h1>
+      <p>Multi-task model vs classification-only baseline · <span id="testset">test split</span></p>
+    </div>
+  </div>
+  <a class="demo-link" href="/">Live demo (Analyse page) →</a>
+</header>
+<div class="banner" role="note">PRELIMINARY — test ground truth = auto-generated pseudo-masks</div>
+
+<nav class="d-tabs" id="tabs">
+  <button data-tab="overview">1 Overview</button>
+  <button data-tab="confusion">2 Confusion</button>
+  <button data-tab="pergrade">3 Per grade</button>
+  <button data-tab="segmentation">4 Segmentation</button>
+  <button data-tab="severity">5 Severity</button>
+  <button data-tab="confidence">6 Confidence</button>
+  <button data-tab="training">7 Training</button>
+  <button data-tab="data">8 Data</button>
+  <button data-tab="errors">9 Errors</button>
+  <a href="/" class="tab-link">10 Live demo →</a>
+</nav>
+
+<main class="d-main">
+  <div id="load-error" class="error" hidden></div>
+
+  <!-- 1 OVERVIEW -->
+  <section class="tab-view" id="tab-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="row-2 wide-left">
+      <div class="card">
+        <h2>Is the multitask model better? Paired bootstrap, multitask − baseline</h2>
+        <table class="t" id="paired"></table>
+        <p class="note" id="paired-note"></p>
+      </div>
+      <div class="card">
+        <h2>Models</h2>
+        <table class="t" id="model-info"></table>
+      </div>
+    </div>
+    <p class="src" data-src="metrics,paired,info"></p>
+  </section>
+
+  <!-- 2 CONFUSION -->
+  <section class="tab-view" id="tab-confusion">
+    <div class="toolbar">
+      <span class="lbl">Show</span>
+      <div class="seg" id="cm-mode">
+        <button data-v="count" class="on">Counts</button>
+        <button data-v="row">Row %</button>
+      </div>
+      <span class="hint">Rows = true grade, columns = predicted. Click a cell to see its images.</span>
+    </div>
+    <div class="row-2" id="cms"></div>
+    <div id="cm-gallery" class="gallery-wrap"></div>
+    <p class="src" data-src="metrics,predictions"></p>
+  </section>
+
+  <!-- 3 PER GRADE -->
+  <section class="tab-view" id="tab-pergrade">
+    <div class="row-2 wide-left">
+      <div class="card"><h2>Precision / recall / F1 per grade</h2><table class="t num" id="pg-table"></table>
+        <p class="note">Support = number of test images with that true grade.</p></div>
+      <div class="card">
+        <div class="card-head"><h2>Per-grade</h2>
+          <div class="seg" id="pg-metric"><button data-v="precision">Precision</button><button data-v="recall">Recall</button><button data-v="f1" class="on">F1</button></div>
+        </div>
+        <div class="chart h-360"><canvas id="pg-chart"></canvas></div>
+      </div>
+    </div>
+    <p class="src" data-src="metrics"></p>
+  </section>
+
+  <!-- 4 SEGMENTATION -->
+  <section class="tab-view" id="tab-segmentation">
+    <div class="row-2">
+      <div class="card"><h2>IoU per class</h2><div class="chart h-380"><canvas id="seg-iou"></canvas></div></div>
+      <div class="card"><h2>Dice per class</h2><div class="chart h-380"><canvas id="seg-dice"></canvas></div></div>
+    </div>
+    <p class="note" id="seg-note"></p>
+    <p class="src" data-src="metrics,predictions"></p>
+  </section>
+
+  <!-- 5 SEVERITY -->
+  <section class="tab-view" id="tab-severity">
+    <div class="row-3">
+      <div class="card"><h2 id="sev-sc-mt-title">Multitask: true vs predicted severity</h2><div class="chart h-330"><canvas id="sev-sc-mt"></canvas></div></div>
+      <div class="card"><h2 id="sev-sc-bl-title">Baseline: true vs predicted severity</h2><div class="chart h-330"><canvas id="sev-sc-bl"></canvas></div></div>
+      <div class="card"><h2>MAE by true grade (% points)</h2><div class="chart h-330"><canvas id="sev-grade"></canvas></div></div>
+    </div>
+    <div class="card mt"><h2>Error = predicted − true severity (% points), number of images per 5-point bin</h2><div class="chart h-260"><canvas id="sev-hist"></canvas></div></div>
+    <p class="src" data-src="predictions,metrics"></p>
+  </section>
+
+  <!-- 6 CONFIDENCE -->
+  <section class="tab-view" id="tab-confidence">
+    <div class="row-2">
+      <div class="card"><h2 id="rel-title">Reliability: confidence vs actual accuracy</h2><div class="chart h-330"><canvas id="rel"></canvas></div>
+        <p class="note">Bars = accuracy of the images in each confidence bin (n above the bar). Grey line = perfect calibration.</p></div>
+      <div class="card"><h2>Accept only if confidence ≥ threshold</h2><div class="chart h-330"><canvas id="thr"></canvas></div>
+        <p class="note">Solid = accuracy of the accepted images, dashed = share of images accepted.</p></div>
+    </div>
+    <div class="card mt"><h2>Manual-review flag</h2><table class="t num" id="flags"></table></div>
+    <p class="src" data-src="predictions"></p>
+  </section>
+
+  <!-- 7 TRAINING -->
+  <section class="tab-view" id="tab-training">
+    <div class="row-2">
+      <div class="card"><h2>Training loss per epoch</h2><div class="chart h-280"><canvas id="tr-loss"></canvas></div></div>
+      <div class="card"><h2>Validation accuracy and macro-F1</h2><div class="chart h-280"><canvas id="tr-acc"></canvas></div></div>
+      <div class="card"><h2>Validation mean-defect Dice (multitask only)</h2><div class="chart h-280"><canvas id="tr-dice"></canvas></div></div>
+      <div class="card"><h2>Validation severity MAE, regression head (multitask only)</h2><div class="chart h-280"><canvas id="tr-mae"></canvas></div></div>
+    </div>
+    <p class="note" id="tr-note"></p>
+    <p class="src" data-src="history_multitask,history_baseline,info"></p>
+  </section>
+
+  <!-- 8 DATA -->
+  <section class="tab-view" id="tab-data">
+    <div class="facts" id="facts"></div>
+    <div class="row-2">
+      <div class="card"><h2>Split by class (group split, no group in two splits)</h2><table class="t num" id="split-table"></table></div>
+      <div class="card"><h2>Grade per split (pseudo-mask grades, after the label filter)</h2>
+        <div class="chart h-250"><canvas id="grade-split"></canvas></div><table class="t num" id="grade-table"></table></div>
+    </div>
+    <p class="note" id="data-note"></p>
+    <p class="src" data-src="audit"></p>
+  </section>
+
+  <!-- 9 ERRORS -->
+  <section class="tab-view" id="tab-errors">
+    <div class="toolbar">
+      <span class="lbl">Model</span>
+      <div class="seg" id="err-model"><button data-v="multitask" class="on">Multitask</button><button data-v="baseline">Baseline</button></div>
+      <span class="lbl">Show</span>
+      <div class="seg" id="err-kind"><button data-v="confident_wrong" class="on">Wrong grade, most confident</button><button data-v="severity">Largest severity error</button></div>
+    </div>
+    <div id="err-gallery" class="gallery-wrap"></div>
+    <p class="src" data-src="predictions"></p>
+  </section>
+</main>
+
+<script src="/static/vendor/chart.umd.4.4.1.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
