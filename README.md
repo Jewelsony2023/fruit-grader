@@ -161,6 +161,37 @@ Open **http://127.0.0.1:8000**:
 
 CLI alternative: `python -m fruitgrade.inference --ckpt runs/.../best.pt --image apple.jpg --save out.png`
 
+### How to present (results dashboard, works offline)
+
+The dashboard needs no internet: no web fonts, no CDN, Chart.js 4.4.1 is in `app/static/vendor/`.
+Every number on it is read from `results/preliminary/` (made by `fruitgrade.predict_split`), the run folders and `results/data_audit/`.
+
+**One command** (from the project folder):
+```powershell
+.venv\Scripts\python.exe -m app.server --multitask runs/prelim_multitask_efficientnet_b0/best.pt --baseline runs/prelim_baseline_efficientnet_b0/best.pt
+```
+Open **http://127.0.0.1:8000/dashboard**. Press F11 for full screen. Keys: ← / → change tab, 1–9 jump to a tab.
+
+The orange banner (*PRELIMINARY — test ground truth = auto-generated pseudo-masks*) stays on every tab. Say it out loud once.
+
+Click through in this order:
+1. **Overview**: the four headline numbers with 95% CIs, then the paired-bootstrap table. Call a difference real only where the verdict says the CI excludes 0.
+2. **Confusion**: click an off-diagonal cell (for example true C → predicted Reject) to show those images.
+3. **Per grade**: point at the support column; the rarest grade has the weakest F1.
+4. **Segmentation**: rot and any-defect; explain why the baseline scores 0 for bruise and mechanical (it has no mask).
+5. **Severity**: scatter against the y = x line, then MAE by grade.
+6. **Confidence**: reliability diagram, then the review-flag table (how many wrong grades the flag catches).
+7. **Training**: curves with the best epoch marked.
+8. **Data**: files = originals × versions, the Kaggle split leak, our group split.
+9. **Errors**: the most confident mistakes. Check which ones are pseudo-mask misses (white mould): that is why the CVAT-verified test set comes next.
+10. **Live demo →**: the Analyse page; click a test image and press *Grade this fruit*.
+
+To rebuild the data (MC Dropout 20 passes, seed 0, so a re-run gives the same files):
+```powershell
+.venv\Scripts\python.exe -m fruitgrade.predict_split --title "PRELIMINARY — test ground truth = auto-generated pseudo-masks, not human-verified"
+.venv\Scripts\python.exe scripts\dashboard_screenshots.py      # screenshots of every tab -> results/review/dashboard/
+```
+
 ---
 
 ## 6. Why it is built this way (viva notes)
