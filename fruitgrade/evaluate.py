@@ -47,68 +47,106 @@ def to_rgb(t):
     return (np.clip(t.permute(1, 2, 0).numpy() * STD + MEAN, 0, 1) * 255).astype(np.uint8)
 
 
-def evaluate_model(ckpt, cfg, ds, device, n_samples=6, mc_passes=10, n_boot=1000, boot_seed=0):
+def predict_image(model, kind, cam, b, cfg, mc_passes, device):
+    """Everything evaluate_model needs for ONE dataset item b. Shared with
+    fruitgrade.predict_split so the per-image CSV and metrics.json come from the same code."""
+    grades, icfg = cfg["grades"], cfg["inference"]
+    x = b["image"][None].to(device)
+    gt_mask = b["mask"].numpy()
+    mc = mc_dropout(model, x, mc_passes)
+    pred = int(mc["top"][0])
+    conf, std = float(mc["probs"][0, pred]), float(mc["top_std"][0])
+    r = {"pred": pred, "probs": mc["probs"][0].cpu().numpy(), "conf": conf, "std": std,
+         "entropy": float(mc["entropy"][0]), "gt_mask": gt_mask,
+         "true_pct": float(b["severity"]) * 100, "head_pct": None, "rule_grade": None}
+    if kind == "multitask":
+        pm = mc["seg_logits"][0].argmax(0).cpu().numpy().astype(np.uint8)
+        r["head_pct"] = float(mc["severity_mean"][0]) * 100
+        heat, _ = cam(x, "grade", pred)
+        sev = severity_from_mask(pm)
+        r["rule_grade"] = grade_from_severity(sev, cfg["grading_rules"], grades)
+    else:
+        heat, _ = cam(x, "grade", grades.index("Reject"))
+        pm = np.where(gt_mask > 0, 1, 0).astype(np.uint8)   # fruit region from GT (generous to baseline)
+        pm[(gt_mask > 0) & (heat > 0.5)] = 3
+        sev = severity_from_mask(pm)
+    r.update(pm=pm, heat=heat, sev=sev)
+    # review flag: the uncertainty rule (used for review_flag_rate) and the app's full rule set
+    reasons = []
+    if conf < icfg["review_confidence"]:
+        reasons.append(f"low confidence ({conf:.0%})")
+    if std > icfg["review_std"]:
+        reasons.append(f"unstable under MC Dropout (std {std:.2f})")
+    r["flag_uncertainty"] = bool(reasons)
+    if r["rule_grade"] is not None and r["rule_grade"] != pred:
+        reasons.append(f"classifier says {grades[pred]} but defect area implies {grades[r['rule_grade']]}")
+    if (pm != 0).mean() < 0.03:
+        reasons.append("no fruit found in the image")
+    r["flag_reasons"] = reasons
+    return r
+
+
+def evaluate_model(ckpt, cfg, ds, device, n_samples=6, mc_passes=10, n_boot=1000, boot_seed=0,
+                   seed=None, per_image=None):
+    """seed: torch seed for the MC Dropout passes (None = not seeded).
+    per_image(i, item, result): optional callback for every image (used by predict_split).
+    Returns (metrics dict, sample list, meters for a paired bootstrap)."""
+    if seed is not None:
+        torch.manual_seed(seed)
     model, ck = load_checkpoint(ckpt, device)
     kind, grades = ck["kind"], cfg["grades"]
     cam = GradCAM(model)
     cls, seg = ClsMeter(len(grades)), SegMeter(len(cfg["seg_classes"]))
     mae_head, mae_mask = MAEMeter(), MAEMeter()
-    rule_agree, flagged, flagged_wrong, wrong = 0, 0, 0, 0
+    rule_agree, flagged, flagged_wrong, wrong, flag_all, flag_all_wrong = 0, 0, 0, 0, 0, 0
     samples = []
-    reject = grades.index("Reject")
-    icfg = cfg["inference"]
 
     for i in range(len(ds)):
         b = ds[i]
-        x = b["image"][None].to(device)
-        gt_mask = b["mask"].numpy()
-        true_pct = float(b["severity"]) * 100
-        mc = mc_dropout(model, x, mc_passes)
-        pred = int(mc["top"][0])
+        r = predict_image(model, kind, cam, b, cfg, mc_passes, device)
+        pred, gt_mask, true_pct, pm = r["pred"], r["gt_mask"], r["true_pct"], r["pm"]
         cls.update([int(b["grade"])], [pred])
 
-        conf, std = float(mc["probs"][0, pred]), float(mc["top_std"][0])
-        is_flag = conf < icfg["review_confidence"] or std > icfg["review_std"]
+        is_flag = r["flag_uncertainty"]
         is_wrong = pred != int(b["grade"])
         flagged += is_flag
         wrong += is_wrong
         flagged_wrong += is_flag and is_wrong
+        flag_all += bool(r["flag_reasons"])
+        flag_all_wrong += bool(r["flag_reasons"]) and is_wrong
 
         if kind == "multitask":
-            pm = mc["seg_logits"][0].argmax(0).cpu().numpy().astype(np.uint8)
-            mae_head.update([true_pct], [float(mc["severity_mean"][0]) * 100])
-            heat, _ = cam(x, "grade", pred)
-            sev = severity_from_mask(pm)
-            rule_agree += grade_from_severity(sev, cfg["grading_rules"], grades) == pred
-        else:
-            heat, _ = cam(x, "grade", reject)
-            pm = np.where(gt_mask > 0, 1, 0).astype(np.uint8)   # fruit region from GT (generous to baseline)
-            pm[(gt_mask > 0) & (heat > 0.5)] = 3
-            sev = severity_from_mask(pm)
-        mae_mask.update([true_pct], [sev["total_pct"]])
+            mae_head.update([true_pct], [r["head_pct"]])
+            rule_agree += r["rule_grade"] == pred
+        mae_mask.update([true_pct], [r["sev"]["total_pct"]])
         seg.update(gt_mask, pm)
+        if per_image:
+            per_image(i, b, r)
 
         if len(samples) < n_samples and i % max(1, len(ds) // n_samples) == 0:
             rgb = to_rgb(b["image"])
-            samples.append({"rgb": rgb, "gt": gt_mask, "pred": pm, "cam": heat,
+            samples.append({"rgb": rgb, "gt": gt_mask, "pred": pm, "cam": r["heat"],
                             "gt_grade": grades[int(b["grade"])], "pred_grade": grades[pred],
-                            "true_pct": true_pct, "pred_pct": sev["total_pct"]})
+                            "true_pct": true_pct, "pred_pct": r["sev"]["total_pct"]})
 
-    out = {"kind": kind, "checkpoint": str(ckpt), "n": len(ds),
+    out = {"kind": kind, "checkpoint": str(ckpt), "n": len(ds), "mc_passes": mc_passes, "mc_seed": seed,
            "classification": cls.result(grades),
            "segmentation": seg.result(cfg["seg_classes"]),
            "severity_mae_from_mask": mae_mask.result(),
            "review_flag_rate": flagged / len(ds),
-           "errors_caught_by_flag": (flagged_wrong / wrong) if wrong else None}
+           "errors_caught_by_flag": (flagged_wrong / wrong) if wrong else None,
+           "review_flag_rate_all_reasons": flag_all / len(ds),
+           "errors_caught_by_flag_all_reasons": (flag_all_wrong / wrong) if wrong else None}
     if kind == "multitask":
         out["severity_mae_regression_head"] = mae_head.result()
         out["classifier_vs_mask_rule_agreement"] = rule_agree / len(ds)
+    meters = (kind, cls, seg, mae_mask, mae_head)
     if n_boot:
         out["ci95"] = bootstrap_ci(len(ds), lambda idx: headline_metrics(kind, cfg, cls, seg, mae_mask, mae_head, idx),
                                    n_boot, boot_seed)
         out["bootstrap"] = {"resamples": n_boot, "seed": boot_seed, "unit": "image"}
     cam.remove()
-    return out, samples
+    return out, samples, meters
 
 
 def headline_metrics(kind, cfg, cls, seg, mae_mask, mae_head, idx=None):
@@ -194,6 +232,8 @@ def comparison_table(results):
          lambda r: ci(r, "severity_mae_regression_head", r.get("severity_mae_regression_head"), digits=2)),
         ("Flagged for manual review", lambda r: f(r["review_flag_rate"], True)),
         ("Wrong grades caught by flag", lambda r: f(r["errors_caught_by_flag"], True)),
+        ("Flagged, all app reasons (+ rule mismatch)", lambda r: f(r.get("review_flag_rate_all_reasons"), True)),
+        ("Wrong grades caught, all app reasons", lambda r: f(r.get("errors_caught_by_flag_all_reasons"), True)),
     ]
     for name, fn in rows:
         lines.append(f"| {name} | " + " | ".join(fn(r) for r in results) + " |")
@@ -215,6 +255,7 @@ def main():
     ap.add_argument("--mc-passes", type=int, default=10)
     ap.add_argument("--bootstrap", type=int, default=1000, help="resamples for 95%% CIs (0 = off)")
     ap.add_argument("--boot-seed", type=int, default=0)
+    ap.add_argument("--seed", type=int, default=None, help="torch seed for MC Dropout (default: not seeded)")
     ap.add_argument("--title", default=None, help="heading put above every table/figure (e.g. PRELIMINARY ...)")
     ap.add_argument("--image-size", type=int, default=None, help="evaluate at the size the model was trained on")
     args = ap.parse_args()
@@ -234,8 +275,9 @@ def main():
     for ckpt in (args.multitask, args.baseline):
         if not ckpt:
             continue
-        r, samples = evaluate_model(ckpt, cfg, ds, device, mc_passes=args.mc_passes,
-                                    n_boot=args.bootstrap, boot_seed=args.boot_seed)
+        r, samples, _ = evaluate_model(ckpt, cfg, ds, device, mc_passes=args.mc_passes,
+                                    n_boot=args.bootstrap, boot_seed=args.boot_seed,
+                                       seed=args.seed)
         results.append(r)
         plot_confusion(r["classification"]["confusion_matrix"], cfg["grades"],
                        (f"{args.title}\n" if args.title else "")

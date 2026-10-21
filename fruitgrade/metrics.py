@@ -5,6 +5,7 @@ Metrics (accumulated over a whole split, not averaged per batch):
   Segmentation   : IoU and Dice per class, mean over DEFECT classes,
                    plus "any-defect" binary IoU/Dice (defect vs not)
   Severity       : MAE in percentage points (|pred% - true%|)
+  Comparison     : paired bootstrap of the difference between two models
 
 IoU  = TP / (TP + FP + FN)
 Dice = 2TP / (2TP + FP + FN)
@@ -40,6 +41,8 @@ class ClsMeter:
             "accuracy": float(tp.sum() / max(cm.sum(), 1)),
             "macro_f1": float(f1[present].mean()) if present.any() else 0.0,
             "per_class_recall": {n: float(r) for n, r in zip(names, recall)},
+            "per_class": {n: {"precision": float(p), "recall": float(r), "f1": float(f), "support": int(s)}
+                          for n, p, r, f, s in zip(names, prec, recall, f1, cm.sum(1))},
             "confusion_matrix": cm.tolist(),
         }
 
@@ -87,6 +90,7 @@ class SegMeter:
             "mean_defect_dice": float(np.mean(dice[present])) if present else 0.0,
             "any_defect_iou": float(tp / max(tp + fp + fn, 1)),
             "any_defect_dice": float(2 * tp / max(2 * tp + fp + fn, 1)),
+            "gt_pixels": {n: int(v) for n, v in zip(names, tp_c + fn_c)},
         }
 
 
@@ -117,3 +121,25 @@ def bootstrap_ci(n_items, stat_fn, n_boot=1000, seed=0, level=0.95):
     a = (1 - level) / 2 * 100
     return {k: [float(np.percentile([d[k] for d in draws], a)),
                 float(np.percentile([d[k] for d in draws], 100 - a))] for k in draws[0]}
+
+
+def paired_bootstrap_diff(n_items, stat_a, stat_b, n_boot=1000, seed=0, level=0.95):
+    """Paired percentile bootstrap of stat_a - stat_b. Both models are scored on the SAME
+    resampled items in every draw, so the per-image correlation between them is kept.
+    stat_x(idx) -> dict of metric -> value (idx=None = all items).
+    Returns {metric: {"diff", "ci95": [low, high], "excludes_zero"}}."""
+    rng = np.random.default_rng(seed)
+    full_a, full_b = stat_a(None), stat_b(None)
+    keys = [k for k in full_a if k in full_b]
+    draws = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n_items, n_items)
+        a, b = stat_a(idx), stat_b(idx)
+        draws.append([a[k] - b[k] for k in keys])
+    draws = np.array(draws)
+    q = (1 - level) / 2 * 100
+    out = {}
+    for j, k in enumerate(keys):
+        lo, hi = float(np.percentile(draws[:, j], q)), float(np.percentile(draws[:, j], 100 - q))
+        out[k] = {"diff": float(full_a[k] - full_b[k]), "ci95": [lo, hi], "excludes_zero": bool(lo > 0 or hi < 0)}
+    return out
