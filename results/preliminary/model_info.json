@@ -1,0 +1,58 @@
+{
+  "split": "test",
+  "n_images": 227,
+  "models": {
+    "multitask": {
+      "kind": "multitask",
+      "checkpoint": "runs/prelim_multitask_efficientnet_b0/best.pt",
+      "run_dir": "runs/prelim_multitask_efficientnet_b0",
+      "backbone": "efficientnet_b0",
+      "pretrained": true,
+      "image_size": 256,
+      "parameters": 5952166,
+      "epochs_run": 20,
+      "best_epoch": 17,
+      "train_seconds_sum_of_epochs": 2030.3,
+      "frozen_backbone_epochs": 2,
+      "sources": {
+        "parameters/best_epoch/backbone": "runs/prelim_multitask_efficientnet_b0/best.pt",
+        "epochs/train_seconds": "runs/prelim_multitask_efficientnet_b0/history.csv",
+        "train_minutes/batch_size": "results/preliminary/run_settings.json",
+        "train_device": "logs/train_prelim_multitask_bs8_256.out.log"
+      },
+      "best_val_score": 0.8910076321209459,
+      "train_minutes": 34.1,
+      "batch_size": 8,
+      "train_device": "cuda",
+      "gpu_this_machine": "NVIDIA GeForce MX350",
+      "mc_passes": 20,
+      "mc_seed": 0
+    },
+    "baseline": {
+      "kind": "baseline",
+      "checkpoint": "runs/prelim_baseline_efficientnet_b0/best.pt",
+      "run_dir": "runs/prelim_baseline_efficientnet_b0",
+      "backbone": "efficientnet_b0",
+      "pretrained": true,
+      "image_size": 256,
+      "parameters": 3678592,
+      "epochs_run": 20,
+      "best_epoch": 19,
+      "train_seconds_sum_of_epochs": 2805.5,
+      "frozen_backbone_epochs": 2,
+      "sources": {
+        "parameters/best_epoch/backbone": "runs/prelim_baseline_efficientnet_b0/best.pt",
+        "epochs/train_seconds": "runs/prelim_baseline_efficientnet_b0/history.csv",
+        "train_minutes/batch_size": "results/preliminary/run_settings.json",
+        "train_device": "logs/train_prelim_baseline_bs8_256.out.log"
+      },
+      "best_val_score": 0.7293982249864602,
+      "train_minutes": 47.1,
+      "batch_size": 8,
+      "train_device": "cuda",
+      "gpu_this_machine": "NVIDIA GeForce MX350",
+      "mc_passes": 20,
+      "mc_seed": 0
+    }
+  }
+}

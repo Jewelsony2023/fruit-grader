@@ -1,0 +1,26 @@
+﻿{
+    "title":  "PRELIMINARY — test ground truth is auto-generated pseudo-masks, not human-verified",
+    "commit":  "5c4d019",
+    "started":  "2026-10-21T00:05:30",
+    "test_ground_truth":  "pseudo-masks (auto-generated)",
+    "backbone":  "efficientnet_b0",
+    "pretrained":  true,
+    "epochs_requested":  20,
+    "early_stop_patience":  "as in config.yaml",
+    "baseline":  {
+                     "image_size":  256,
+                     "ok":  true,
+                     "batch":  8,
+                     "out":  "runs/prelim_baseline_efficientnet_b0",
+                     "epochs_run":  20,
+                     "minutes":  47.1
+                 },
+    "multitask":  {
+                      "image_size":  256,
+                      "ok":  true,
+                      "batch":  8,
+                      "out":  "runs/prelim_multitask_efficientnet_b0",
+                      "epochs_run":  20,
+                      "minutes":  34.1
+                  }
+}

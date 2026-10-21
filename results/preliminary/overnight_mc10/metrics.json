@@ -1,0 +1,206 @@
+[
+  {
+    "kind": "multitask",
+    "checkpoint": "runs/prelim_multitask_efficientnet_b0/best.pt",
+    "n": 227,
+    "classification": {
+      "accuracy": 0.7841409691629956,
+      "macro_f1": 0.5847767917397759,
+      "per_class_recall": {
+        "A": 0.8125,
+        "B": 0.07692307692307693,
+        "C": 0.5454545454545454,
+        "Reject": 0.9145299145299145
+      },
+      "confusion_matrix": [
+        [
+          52,
+          1,
+          7,
+          4
+        ],
+        [
+          3,
+          1,
+          8,
+          1
+        ],
+        [
+          4,
+          1,
+          18,
+          10
+        ],
+        [
+          1,
+          0,
+          9,
+          107
+        ]
+      ]
+    },
+    "segmentation": {
+      "iou": {
+        "background": 0.9149921755955792,
+        "healthy": 0.8084297020932704,
+        "bruise": 0.0,
+        "rot": 0.5853245652855583,
+        "mechanical": 0.1643539892060602
+      },
+      "dice": {
+        "background": 0.9556093097988859,
+        "healthy": 0.8940681533349151,
+        "bruise": 0.0,
+        "rot": 0.7384286828106092,
+        "mechanical": 0.28230931611807936
+      },
+      "mean_defect_iou": 0.24989285149720616,
+      "mean_defect_dice": 0.3402459996428962,
+      "any_defect_iou": 0.593221678093089,
+      "any_defect_dice": 0.7446819061652614
+    },
+    "severity_mae_from_mask": 9.401309006449722,
+    "review_flag_rate": 0.1894273127753304,
+    "errors_caught_by_flag": 0.4897959183673469,
+    "severity_mae_regression_head": 6.602838595987796,
+    "classifier_vs_mask_rule_agreement": 0.8105726872246696,
+    "ci95": {
+      "accuracy": [
+        0.7312775330396476,
+        0.8325991189427313
+      ],
+      "macro_f1": [
+        0.5153353400597658,
+        0.6603280929413582
+      ],
+      "mean_defect_iou": [
+        0.2276840387303004,
+        0.2697207325729382
+      ],
+      "mean_defect_dice": [
+        0.31467161387880654,
+        0.3637502343541751
+      ],
+      "any_defect_iou": [
+        0.5490704564876692,
+        0.6362498280962193
+      ],
+      "any_defect_dice": [
+        0.708903138248881,
+        0.7776927668859525
+      ],
+      "severity_mae_from_mask": [
+        7.734294510898083,
+        11.092486182787853
+      ],
+      "severity_mae_regression_head": [
+        5.704525519632116,
+        7.555460657937619
+      ]
+    },
+    "bootstrap": {
+      "resamples": 1000,
+      "seed": 0,
+      "unit": "image"
+    }
+  },
+  {
+    "kind": "baseline",
+    "checkpoint": "runs/prelim_baseline_efficientnet_b0/best.pt",
+    "n": 227,
+    "classification": {
+      "accuracy": 0.7797356828193832,
+      "macro_f1": 0.572644147660378,
+      "per_class_recall": {
+        "A": 0.828125,
+        "B": 0.07692307692307693,
+        "C": 0.48484848484848486,
+        "Reject": 0.9145299145299145
+      },
+      "confusion_matrix": [
+        [
+          53,
+          2,
+          5,
+          4
+        ],
+        [
+          3,
+          1,
+          9,
+          0
+        ],
+        [
+          8,
+          1,
+          16,
+          8
+        ],
+        [
+          1,
+          0,
+          9,
+          107
+        ]
+      ]
+    },
+    "segmentation": {
+      "iou": {
+        "background": 1.0,
+        "healthy": 0.772835146853683,
+        "bruise": 0.0,
+        "rot": 0.371896875126618,
+        "mechanical": 0.0
+      },
+      "dice": {
+        "background": 1.0,
+        "healthy": 0.8718635212363232,
+        "bruise": 0.0,
+        "rot": 0.5421644758718386,
+        "mechanical": 0.0
+      },
+      "mean_defect_iou": 0.123965625042206,
+      "mean_defect_dice": 0.18072149195727952,
+      "any_defect_iou": 0.3722133198654393,
+      "any_defect_dice": 0.5425006658613968
+    },
+    "severity_mae_from_mask": 10.222605359219058,
+    "review_flag_rate": 0.2555066079295154,
+    "errors_caught_by_flag": 0.6,
+    "ci95": {
+      "accuracy": [
+        0.7224669603524229,
+        0.8281938325991189
+      ],
+      "macro_f1": [
+        0.5039504551765468,
+        0.6477089339282911
+      ],
+      "mean_defect_iou": [
+        0.11287855258689657,
+        0.13516514640616656
+      ],
+      "mean_defect_dice": [
+        0.16864716227479415,
+        0.19233807776603443
+      ],
+      "any_defect_iou": [
+        0.33941174825090814,
+        0.4039127182703416
+      ],
+      "any_defect_dice": [
+        0.5068071838780972,
+        0.5754100132899465
+      ],
+      "severity_mae_from_mask": [
+        8.73565561105348,
+        11.71709393829775
+      ]
+    },
+    "bootstrap": {
+      "resamples": 1000,
+      "seed": 0,
+      "unit": "image"
+    }
+  }
+]

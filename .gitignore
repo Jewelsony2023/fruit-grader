@@ -5,3 +5,5 @@ __pycache__/
 # model weights stay on disk only (too big for git); run metadata IS committed
 *.pt
 reports/
+# dashboard thumbnails: 454 derived dataset images, rebuilt by python -m fruitgrade.predict_split
+results/preliminary/thumbs/
