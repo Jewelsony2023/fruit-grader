@@ -1,0 +1,60 @@
+{
+  "what": "paired percentile bootstrap of multitask - baseline",
+  "split": "test",
+  "n": 227,
+  "resamples": 1000,
+  "seed": 0,
+  "unit": "image",
+  "metrics": {
+    "accuracy": {
+      "diff": 0.013215859030836996,
+      "ci95": [
+        -0.022026431718061623,
+        0.04405286343612336
+      ],
+      "excludes_zero": false,
+      "higher_is_better": true,
+      "verdict": "no clear difference (CI includes 0)"
+    },
+    "macro_f1": {
+      "diff": -0.0026987563771896372,
+      "ci95": [
+        -0.07082927109321212,
+        0.06026113284871089
+      ],
+      "excludes_zero": false,
+      "higher_is_better": true,
+      "verdict": "no clear difference (CI includes 0)"
+    },
+    "any_defect_dice": {
+      "diff": 0.20218124030386464,
+      "ci95": [
+        0.16922484199540666,
+        0.2379249406761902
+      ],
+      "excludes_zero": true,
+      "higher_is_better": true,
+      "verdict": "multitask better"
+    },
+    "severity_mae_from_mask": {
+      "diff": -0.8212963527693358,
+      "ci95": [
+        -2.322760406407909,
+        0.6493408101781464
+      ],
+      "excludes_zero": false,
+      "higher_is_better": false,
+      "verdict": "no clear difference (CI includes 0)"
+    },
+    "severity_mae_head_vs_baseline_mask": {
+      "diff": -3.5572148748640284,
+      "ci95": [
+        -4.91216595004193,
+        -2.261544487152657
+      ],
+      "excludes_zero": true,
+      "higher_is_better": false,
+      "verdict": "multitask better"
+    }
+  }
+}
