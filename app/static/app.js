@@ -4,8 +4,8 @@ const GRADE_COLOUR = { A: "var(--A)", B: "var(--B)", C: "var(--C)", Reject: "var
 let INFO = null, currentFile = null, currentModel = "multitask", lastResult = null;
 
 // ---------- tabs ----------
-document.querySelectorAll(".tab").forEach((t) => t.onclick = () => {
-  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
+document.querySelectorAll(".tab[data-view]").forEach((t) => t.onclick = () => {
+  document.querySelectorAll(".tab[data-view]").forEach((x) => x.classList.toggle("active", x === t));
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + t.dataset.view));
   if (t.dataset.view === "performance") loadReport();
 });
