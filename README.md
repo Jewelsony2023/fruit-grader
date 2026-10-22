@@ -166,10 +166,11 @@ CLI alternative: `python -m fruitgrade.inference --ckpt runs/.../best.pt --image
 The dashboard needs no internet: no web fonts, no CDN, Chart.js 4.4.1 is in `app/static/vendor/`.
 Every number on it is read from `results/preliminary/` (made by `fruitgrade.predict_split`), the run folders and `results/data_audit/`.
 
-**One command** (from the project folder):
+**One command** (PowerShell, from the project folder):
 ```powershell
-.venv\Scripts\python.exe -m app.server --multitask runs/prelim_multitask_efficientnet_b0/best.pt --baseline runs/prelim_baseline_efficientnet_b0/best.pt
+$env:FRUIT_REPORT_DIR = "results/preliminary"; .venv\Scripts\python.exe -m app.server --multitask runs/prelim_multitask_efficientnet_b0/best.pt --baseline runs/prelim_baseline_efficientnet_b0/best.pt
 ```
+Keep the `FRUIT_REPORT_DIR` part: without it the performance panel on the Analyse page reads `reports/`, which holds the **synthetic** demo numbers. The dashboard tabs read `results/preliminary/` either way.
 Open **http://127.0.0.1:8000/dashboard**. Press F11 for full screen. Keys: ← / → change tab, 1–9 jump to a tab.
 
 The orange banner (*PRELIMINARY — test ground truth = auto-generated pseudo-masks*) stays on every tab. Say it out loud once.
